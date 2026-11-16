@@ -319,6 +319,7 @@ node test/erp.mjs                       # the dense-tool pair, self-contained
 node test/composition.mjs               # the soul pair, self-contained
 node test/media.mjs                     # the clip ladder, the stack, the fallbacks
 node test/gallery.mjs                   # the carousel: paddles, dots, keyboard
+node test/accounting.mjs                # nito-accounting: refs resolve, every worked journal entry balances
 ```
 
 357 checks across the seven. `test/media.mjs` is the widest of them: it reads
