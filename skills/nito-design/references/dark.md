@@ -21,8 +21,11 @@ a product shot with its own black background, so any grey would show the seam.
 A dark *site*, as opposed to a dark section, usually wants a near-black with a
 little warmth or coolness in it — `#0b0f12`, `#14110e` — because a full page of
 `#000` with no photography on it reads as a void rather than a choice. Either
-way the rule that transfers is the **size of the step**: alt surface sits about
-1.05–1.15:1 from the base, barely a step, never a second theme.
+way the rule that transfers is the **size of the step**: the alt surface is a
+near neighbour of the base, never a second theme. Apple's own pairs compute to
+1.09:1 on light (`#fff` / `#f5f5f7`) and 1.25:1 on dark (`#000` / `#1d1d1f`).
+Keeping the step small is this skill's preference, not a published threshold;
+`test/conformance.mjs` accepts anything between 1.015:1 and 1.25:1.
 
 ## Alpha ink is a trap on dark
 
@@ -54,16 +57,18 @@ their contrast honestly.
 ## Contrast inverts, and so does the comfortable maximum
 
 On light, you push body text toward maximum contrast — `#1d1d1f` on `#fff` is
-about 16:1 and it reads beautifully.
+16.83:1 and it reads beautifully.
 
-On dark, maximum contrast is *harsh*. Pure `#fff` on `#000` is 21:1 and it
-glares, haloes on low-quality panels, and makes long paragraphs physically
-tiring. Apple never does it: supporting copy on its black sections is
-`#86868b`, about 5:1. Headlines take `#f5f5f7`, not `#fff`.
+On dark, Apple steps long copy down instead. Pure `#fff` on `#000` is 21:1;
+Apple's supporting copy on its black sections is `#86868b`, 5.80:1, and its
+headlines take `#f5f5f7` (19.29:1), not `#fff`.
 
-The floor still applies — 4.5:1 for body, 3:1 for large text. The change is
-that there is now a sensible ceiling too, somewhere around 12:1 for anything
-longer than a headline.
+The floor is the rule — 4.5:1 for body, 3:1 for large text (WCAG 2.2 SC 1.4.3),
+and Apple's Dark Mode guidance asks for 4.5:1 at minimum and to strive for 7:1.
+Stepping long copy below maximum contrast on dark is a **style choice, not a
+requirement**: no published contrast ceiling exists, and the research found no
+verified general-population evidence against pure white on pure black. Do it
+for the look if the design wants it; never trade the floor for it.
 
 ## Elevation stops working
 
@@ -89,17 +94,17 @@ never crossing the copy column.
 
 ## The accent moves
 
-A hue that passes on white can disappear on black, and the reverse. Apple's own
-two blues, measured:
+A hue that passes on white can fail on black, and the reverse. Apple's own two
+blues, computed with the WCAG formula:
 
 | | on `#fff` | on `#000` |
 |---|---|---|
-| `#06c` — the link blue on light | **17.3:1** | **1.2:1** |
-| `#2997ff` — the blue it uses on dark | 3.0:1 | **7.0:1** |
+| `#06c` — the link blue on light | **5.57:1** | 3.77:1 |
+| `#2997ff` — the blue it uses on dark | 3.02:1 | **6.96:1** |
 
-`#06c` is not merely thin on black, it is gone. And `#2997ff` fails AA for
-small text on white. Neither is a worse colour than the other; they are the
-same decision made for two different backgrounds.
+`#06c` passes AA for text on white and fails it on black. `#2997ff` is the
+reverse: it fails AA for small text on white. Neither is a worse colour than
+the other; they are the same decision made for two different backgrounds.
 
 Give the accent two values and switch them with the surface:
 
@@ -108,8 +113,8 @@ Give the accent two values and switch them with the surface:
 :root[data-dark] { --accent: #2997ff; --on-accent: #00172e; }
 ```
 
-`#0071e3` is the exception that proves the point — 4.7:1 on white and 4.5:1 on
-black, which is why it is the one Apple uses for buttons that appear on both.
+`#0071e3` is the exception that proves the point — 4.70:1 on white and 4.47:1
+on black (a hair under AA for small text there, fine as a button fill), which is why it is the one Apple uses for buttons that appear on both.
 A mid-luminance accent survives either background; anything near the ends of
 the range needs a pair.
 

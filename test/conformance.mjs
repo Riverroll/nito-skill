@@ -153,7 +153,13 @@ if (ink && sec && muted && surf) {
   const rInk = ratio(ink, surf), rSec = ratio(sec, surf), rMuted = ratio(muted, surf);
   atLeast("primary ink is AAA on the surface", rInk, 7);
   atLeast("supporting copy is AA on the surface", rSec, 4.5);
-  atLeast("metadata ink still clears 3:1", rMuted, 3);
+  // captions and metadata are small text, so WCAG 2.2 SC 1.4.3 asks 4.5:1 of
+  // them too; 3:1 is only for large text (24px, or 18.66px bold).
+  atLeast("metadata ink is AA on the surface", rMuted, 4.5);
+  if (alt) {
+    atLeast("supporting copy is AA on the alt surface", ratio(sec, alt), 4.5);
+    atLeast("metadata ink is AA on the alt surface", ratio(muted, alt), 4.5);
+  }
   ok("the three ink steps are clearly separated",
      rInk / rSec >= 1.15 && rSec / rMuted >= 1.15,
      `${rInk.toFixed(1)} / ${rSec.toFixed(1)} / ${rMuted.toFixed(1)}`);
