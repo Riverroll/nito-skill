@@ -1,5 +1,5 @@
 ---
-name: apple-design
+name: nito-design
 description: Apply Apple's craft — spacing ladder, em-based vertical rhythm, measured type scale, easing curves, parallax and scroll-linked motion — to a design, without changing its identity. Use whenever work involves a marketing page, product page, landing page, hero, feature grid or comparison table; when tightening the spacing, rhythm, typography or motion of an existing site; or when a request asks for something to feel "premium", "considered", "high-end" or "like Apple". Also use before writing headline or feature copy for such a page.
 ---
 
@@ -128,13 +128,20 @@ the people who use it all day will be right to hate it.
 }
 ```
 
+Every ink step must reach **4.5:1** on every surface it is set on (WCAG 2.2
+SC 1.4.3). Captions and metadata are small text, so the 3:1 allowance for large
+text (24px, or 18.66px bold) does not cover them.
+
 For reference, Apple's own values are `#1d1d1f` / `#6e6e73` / `#86868b` on
-`#fff` / `#f5f5f7` with `#0071e3`. Use them **only** when starting from nothing
-and the design has no palette of its own. The relationship to copy: the alt
-surface is a *near* neighbour of the base (barely a step), while the three ink
-levels are clearly separated. On dark, Apple inverts to `#000` base with
-`#f5f5f7` ink and `#86868b` for supporting copy — note the base is pure black,
-not a dark grey.
+`#fff` / `#f5f5f7` with `#0071e3`. Its caption grey `#86868b` is 3.62:1 on
+`#fff` and 3.33:1 on `#f5f5f7`, below that floor, so `assets/apple-base.css`
+ships `#1d1d1f` / `#57575c` / `#6e6e73` instead (16.83, 7.18 and 5.07:1 on
+`#fff`). Use them **only** when starting from nothing and the design has no
+palette of its own. The relationship to copy: the alt surface is a *near*
+neighbour of the base (barely a step), while the three ink levels are clearly
+separated. On dark, Apple inverts to `#000` base with `#f5f5f7` ink and
+`#86868b` for supporting copy (5.80:1 on `#000`) — note the base is pure
+black, not a dark grey.
 
 ## The five rules that carry most of the effect
 

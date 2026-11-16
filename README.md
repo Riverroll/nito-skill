@@ -1,4 +1,4 @@
-# apple-skill
+# nito-skill
 
 A Claude Code skill that teaches Apple's design system — the measured type
 scale, em-based vertical rhythm, motion curves, scroll-linked technique, layout
@@ -31,15 +31,15 @@ three words, 42% ending in a full stop.
 As a plugin:
 
 ```
-/plugin marketplace add Riverroll/apple-skill
-/plugin install apple-skill
+/plugin marketplace add Riverroll/nito-skill
+/plugin install nito-skill
 ```
 
 Or drop the skill straight in:
 
 ```sh
-git clone git@github.com:Riverroll/apple-skill.git
-cp -r apple-skill/skills/apple-design ~/.claude/skills/
+git clone git@github.com:Riverroll/nito-skill.git
+cp -r nito-skill/skills/nito-design ~/.claude/skills/
 ```
 
 ## What's inside
@@ -48,7 +48,7 @@ cp -r apple-skill/skills/apple-design ~/.claude/skills/
 tools/audit.mjs                audit any live URL — see below
 tools/make-clip.sh             build one clip's six-file ladder and its stills
 tools/render-clip.mjs          render a clip from a scene you wrote — no footage needed
-skills/apple-design/
+skills/nito-design/
   SKILL.md                     what to change and what to leave alone, token roles, the four rules
   references/restraint.md      one accent, three inks, three radii, two weights
   references/dark.md           what inverts on a dark site, and what breaks silently
@@ -319,6 +319,7 @@ node test/erp.mjs                       # the dense-tool pair, self-contained
 node test/composition.mjs               # the soul pair, self-contained
 node test/media.mjs                     # the clip ladder, the stack, the fallbacks
 node test/gallery.mjs                   # the carousel: paddles, dots, keyboard
+node test/accounting.mjs                # nito-accounting: refs resolve, every worked journal entry balances
 ```
 
 357 checks across the seven. `test/media.mjs` is the widest of them: it reads

@@ -2,7 +2,7 @@
 // and no Apple-owned asset may be bundled.
 import fs from "node:fs"; import path from "node:path";
 const ROOT = path.resolve(import.meta.dirname, "..");
-const SKILL = path.join(ROOT, "skills/apple-design");
+const SKILL = path.join(ROOT, "skills/nito-design");
 const checks = [];
 const ok = (name, cond, detail = "") => checks.push({ name, pass: !!cond, detail });
 

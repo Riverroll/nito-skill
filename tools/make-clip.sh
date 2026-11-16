@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build the six-file source ladder apple.com ships for one inline clip, plus the
-# still that sits underneath it. See skills/apple-design/references/media.md.
+# still that sits underneath it. See skills/nito-design/references/media.md.
 #
 #   tools/make-clip.sh <source> <out-dir>
 #

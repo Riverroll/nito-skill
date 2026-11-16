@@ -8,7 +8,7 @@ import fs from "node:fs"; import os from "node:os"; import path from "node:path"
 import { spawn } from "node:child_process";
 
 const URL_ = process.argv[2] || process.env.TARGET_URL || "http://localhost:4100/example/index.html";
-const SKILL = path.resolve(import.meta.dirname, "../skills/apple-design");
+const SKILL = path.resolve(import.meta.dirname, "../skills/nito-design");
 const SCALE = JSON.parse(fs.readFileSync(path.join(SKILL, "assets/type-scale.json"), "utf8"));
 // headline steps that live in other product stylesheets, same source
 SCALE["typography-headline-reduced"] ??= { base: { size: "40px", line: "1.1", weight: "600", tracking: "0em" } };
@@ -153,7 +153,13 @@ if (ink && sec && muted && surf) {
   const rInk = ratio(ink, surf), rSec = ratio(sec, surf), rMuted = ratio(muted, surf);
   atLeast("primary ink is AAA on the surface", rInk, 7);
   atLeast("supporting copy is AA on the surface", rSec, 4.5);
-  atLeast("metadata ink still clears 3:1", rMuted, 3);
+  // captions and metadata are small text, so WCAG 2.2 SC 1.4.3 asks 4.5:1 of
+  // them too; 3:1 is only for large text (24px, or 18.66px bold).
+  atLeast("metadata ink is AA on the surface", rMuted, 4.5);
+  if (alt) {
+    atLeast("supporting copy is AA on the alt surface", ratio(sec, alt), 4.5);
+    atLeast("metadata ink is AA on the alt surface", ratio(muted, alt), 4.5);
+  }
   ok("the three ink steps are clearly separated",
      rInk / rSec >= 1.15 && rSec / rMuted >= 1.15,
      `${rInk.toFixed(1)} / ${rSec.toFixed(1)} / ${rMuted.toFixed(1)}`);

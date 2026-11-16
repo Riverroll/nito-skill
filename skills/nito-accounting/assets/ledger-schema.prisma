@@ -1,0 +1,157 @@
+// Starter ledger schema for MariaDB/MySQL. A DESIGN, not a copy of any ERP:
+// header-and-line entries as in Odoo, ERPNext and Oracle, a source reference on
+// every entry, an idempotency key, and a counter row for numbering.
+// See references/starter-implementation.md before using it.
+//
+// Prisma cannot declare CHECK constraints. Add the one in
+// references/starter-implementation.md by raw SQL in the first migration.
+
+datasource db {
+  provider = "mysql"
+}
+
+enum AccAccountType {
+  asset
+  contra_asset
+  liability
+  equity
+  contra_equity
+  revenue
+  contra_revenue
+  expense
+  temporary
+  suspense
+}
+
+enum AccNormalBalance {
+  debit
+  credit
+  either
+}
+
+enum AccEntryStatus {
+  draft
+  posted
+  reversed
+}
+
+enum AccPeriodStatus {
+  open
+  closed
+}
+
+/// Chart of accounts. Loaded per company from a template; the engine reads
+/// account_type and the flags, never the code.
+model T_M_ACC_ACCOUNT {
+  account_id     Int              @id @default(autoincrement())
+  company_id     Int
+  account_code   String           @db.VarChar(20)
+  account_name   String           @db.VarChar(150)
+  account_type   AccAccountType
+  normal_balance AccNormalBalance
+  parent_id      Int?
+  is_postable    Boolean          @default(true)
+  /// customer, supplier, item_and_location, asset_register; null when not a control account
+  control_type   String?          @db.VarChar(30)
+  is_active      Boolean          @default(true)
+  created_at     DateTime         @default(now()) @db.Timestamp(0)
+
+  lines    T_L_ACC_JOURNAL_LINE[]
+  defaults T_M_ACC_DEFAULT_ACCOUNT[]
+
+  @@unique([company_id, account_code], map: "uq_acc_account_code")
+}
+
+/// Account determination: role key (receivable, sales, tax_output_ppn ...) to account.
+model T_M_ACC_DEFAULT_ACCOUNT {
+  company_id Int
+  role_key   String @db.VarChar(50)
+  account_id Int
+
+  account T_M_ACC_ACCOUNT @relation(fields: [account_id], references: [account_id])
+
+  @@id([company_id, role_key])
+}
+
+/// Accounting periods. Posting into a closed period is refused by the service.
+model T_M_ACC_PERIOD {
+  period_id  Int             @id @default(autoincrement())
+  company_id Int
+  start_date DateTime        @db.Date
+  end_date   DateTime        @db.Date
+  status     AccPeriodStatus @default(open)
+
+  @@unique([company_id, start_date], map: "uq_acc_period_start")
+}
+
+/// One row per company, journal and year. The posting transaction locks the
+/// row with SELECT ... FOR UPDATE and increments it. AUTO_INCREMENT is not
+/// used for document numbers because it leaves gaps after a rollback.
+model T_M_ACC_SEQUENCE {
+  company_id   Int
+  journal_code String @db.VarChar(10)
+  fiscal_year  Int
+  next_number  Int    @default(1)
+
+  @@id([company_id, journal_code, fiscal_year])
+}
+
+/// Journal entry header. Never updated after status = posted, except to mark
+/// it reversed when its reversing entry is posted.
+model T_L_ACC_JOURNAL_ENTRY {
+  entry_id          BigInt         @id @default(autoincrement())
+  company_id        Int
+  journal_code      String         @db.VarChar(10)
+  /// assigned at posting; null while draft (a unique index allows many nulls)
+  entry_number      String?        @db.VarChar(30)
+  status            AccEntryStatus @default(draft)
+  posting_date      DateTime       @db.Date
+  document_date     DateTime       @db.Date
+  description       String?        @db.VarChar(255)
+  /// the document that caused the posting; null only for a manual journal
+  source_type       String?        @db.VarChar(40)
+  source_id         String?        @db.VarChar(40)
+  /// one per posting request, so a retry cannot post twice
+  idempotency_key   String         @db.VarChar(80)
+  reverses_entry_id BigInt?
+  created_by        Int
+  approved_by       Int?
+  posted_at         DateTime?      @db.Timestamp(0)
+  created_at        DateTime       @default(now()) @db.Timestamp(0)
+
+  lines T_L_ACC_JOURNAL_LINE[]
+
+  @@unique([company_id, idempotency_key], map: "uq_acc_entry_idem")
+  @@unique([company_id, journal_code, entry_number], map: "uq_acc_entry_number")
+  @@index([company_id, posting_date], map: "ix_acc_entry_date")
+  @@index([source_type, source_id], map: "ix_acc_entry_source")
+}
+
+/// Journal entry line. Exactly one of debit and credit is above zero. Amounts
+/// are in the functional currency; the transaction currency is kept beside them.
+model T_L_ACC_JOURNAL_LINE {
+  line_id         BigInt  @id @default(autoincrement())
+  entry_id        BigInt
+  line_no         Int
+  account_id      Int
+  debit           Decimal @default(0) @db.Decimal(18, 2)
+  credit          Decimal @default(0) @db.Decimal(18, 2)
+  currency_code   String  @default("IDR") @db.Char(3)
+  amount_currency Decimal @default(0) @db.Decimal(18, 2)
+  exchange_rate   Decimal @default(1) @db.Decimal(18, 8)
+  /// customer, supplier, employee; required on control accounts
+  party_type      String? @db.VarChar(20)
+  party_id        Int?
+  source_line_id  String? @db.VarChar(40)
+  cost_center_id  Int?
+  site_id         Int?
+  project_id      Int?
+  description     String? @db.VarChar(255)
+
+  entry   T_L_ACC_JOURNAL_ENTRY @relation(fields: [entry_id], references: [entry_id])
+  account T_M_ACC_ACCOUNT       @relation(fields: [account_id], references: [account_id])
+
+  @@unique([entry_id, line_no], map: "uq_acc_line_no")
+  @@index([account_id], map: "ix_acc_line_account")
+  @@index([party_type, party_id], map: "ix_acc_line_party")
+}
