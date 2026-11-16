@@ -1,4 +1,4 @@
-# apple-skill
+# nito-skill
 
 A Claude Code skill that teaches Apple's design system — the measured type
 scale, em-based vertical rhythm, motion curves, scroll-linked technique, layout
@@ -31,15 +31,15 @@ three words, 42% ending in a full stop.
 As a plugin:
 
 ```
-/plugin marketplace add Riverroll/apple-skill
-/plugin install apple-skill
+/plugin marketplace add Riverroll/nito-skill
+/plugin install nito-skill
 ```
 
 Or drop the skill straight in:
 
 ```sh
-git clone git@github.com:Riverroll/apple-skill.git
-cp -r apple-skill/skills/apple-design ~/.claude/skills/
+git clone git@github.com:Riverroll/nito-skill.git
+cp -r nito-skill/skills/apple-design ~/.claude/skills/
 ```
 
 ## What's inside
