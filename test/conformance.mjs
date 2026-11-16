@@ -8,7 +8,7 @@ import fs from "node:fs"; import os from "node:os"; import path from "node:path"
 import { spawn } from "node:child_process";
 
 const URL_ = process.argv[2] || process.env.TARGET_URL || "http://localhost:4100/example/index.html";
-const SKILL = path.resolve(import.meta.dirname, "../skills/apple-design");
+const SKILL = path.resolve(import.meta.dirname, "../skills/nito-design");
 const SCALE = JSON.parse(fs.readFileSync(path.join(SKILL, "assets/type-scale.json"), "utf8"));
 // headline steps that live in other product stylesheets, same source
 SCALE["typography-headline-reduced"] ??= { base: { size: "40px", line: "1.1", weight: "600", tracking: "0em" } };

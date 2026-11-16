@@ -39,7 +39,7 @@ Or drop the skill straight in:
 
 ```sh
 git clone git@github.com:Riverroll/nito-skill.git
-cp -r nito-skill/skills/apple-design ~/.claude/skills/
+cp -r nito-skill/skills/nito-design ~/.claude/skills/
 ```
 
 ## What's inside
@@ -48,7 +48,7 @@ cp -r nito-skill/skills/apple-design ~/.claude/skills/
 tools/audit.mjs                audit any live URL — see below
 tools/make-clip.sh             build one clip's six-file ladder and its stills
 tools/render-clip.mjs          render a clip from a scene you wrote — no footage needed
-skills/apple-design/
+skills/nito-design/
   SKILL.md                     what to change and what to leave alone, token roles, the four rules
   references/restraint.md      one accent, three inks, three radii, two weights
   references/dark.md           what inverts on a dark site, and what breaks silently

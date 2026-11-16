@@ -1,5 +1,5 @@
 ---
-name: apple-design
+name: nito-design
 description: Apply Apple's craft — spacing ladder, em-based vertical rhythm, measured type scale, easing curves, parallax and scroll-linked motion — to a design, without changing its identity. Use whenever work involves a marketing page, product page, landing page, hero, feature grid or comparison table; when tightening the spacing, rhythm, typography or motion of an existing site; or when a request asks for something to feel "premium", "considered", "high-end" or "like Apple". Also use before writing headline or feature copy for such a page.
 ---
 

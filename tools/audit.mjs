@@ -1397,7 +1397,7 @@ const summary = {
 // --------------------------------------------------------------------- cli
 function report(url, { summary, findings, byWidth }, widths = WIDTHS) {
   const d = byWidth[widths[0]];
-  console.log(`\n  apple-design audit — ${url}`);
+  console.log(`\n  nito-design audit — ${url}`);
   console.log(`  measured at ${widths.join(" / ")}px · ${d.nodes} painted elements · ${d.stickyOk} working sticky element(s)`);
   if (summary.mode === "erp")
     console.log(`  dense-tool mode · ${summary.tables} table(s), ${summary.rows} rows · the marketing padding, headline and parallax checks are off`);
