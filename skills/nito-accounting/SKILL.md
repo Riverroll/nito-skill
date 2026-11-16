@@ -60,6 +60,7 @@ pattern are in `references/real-systems-db-enforcement.md`.
 | Payroll, BPJS, PPh 21 (TER), THR, severance | `references/payroll.md` |
 | Corporate income tax, PPh withholding, final tax, accruals, dividends, intercompany | `references/income-tax-other-cycles.md` |
 | Table design, what the database can enforce, how Odoo, ERPNext, Oracle and Dynamics do it | `references/real-systems-db-enforcement.md` |
+| Building the ledger: tables, the posting transaction, a tested posting core to copy | `references/starter-implementation.md`, with `assets/ledger-schema.prisma` and `assets/posting-core.mjs` |
 | Starting accounting in a new ERP, connecting a module, the posting request, account determination, reconciliation jobs | `references/posting-contract.md` |
 | Any rate, cap, threshold, deadline or regulation number | `references/values-to-verify.md` |
 | What a label such as STANDARD, LAW, SECONDARY, CONSTRUCTED or UNVERIFIED means | `references/evidence-labels.md` |
@@ -92,6 +93,8 @@ every one of them.
    The fields are listed in `references/posting-contract.md`.
 3. Build the ledger and the posting service first: balanced header-and-line
    entries, draft and posted states, reversal, period locks, numbering.
+   Start from `references/starter-implementation.md`: copy the schema and
+   the posting core instead of designing them again.
 4. For each module the ERP has, implement its events from the catalogue in
    `references/posting-contract.md` and map its documents to a source type.
 5. Fill the account-determination keys. A missing key rejects the posting; do

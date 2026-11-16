@@ -1,0 +1,165 @@
+# Starter implementation: schema, posting core and the posting transaction
+
+> Part of the `nito-accounting` skill. Everything in this file is a **design**
+> drawn from the sourced findings in `real-systems-db-enforcement.md` and
+> `posting-contract.md`. No vendor documents it in this form. The two asset
+> files are tested as described below; the SQL transaction is **not** tested
+> against a database and must be run against the project's own MariaDB/MySQL
+> before it is trusted.
+
+Use this when an ERP needs accounting and has none yet. Copy the two assets,
+then extend them. Do not redesign the ledger per project.
+
+## What is provided
+
+| File | What it is | How it was checked |
+|---|---|---|
+| `assets/ledger-schema.prisma` | Six tables: accounts, default accounts, periods, numbering counter, entry header, entry lines | `prisma validate` on Prisma 7 reports the schema valid. Not migrated to a database. |
+| `assets/posting-core.mjs` | Pure functions: `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `toMinor`, `fromMinor` | `test/accounting.mjs` replays worked entries A1 and P1 and checks every rejection rule |
+| `assets/coa-template-id.json` | Default chart, 29 accounts | `test/accounting.mjs` checks codes, types and normal balances |
+
+The schema follows the naming already used in the owner's projects (`T_M_`
+master tables, `T_L_` transaction tables, snake_case columns,
+`Decimal(18, 2)` for money). Rename freely.
+
+## The tables
+
+- `T_M_ACC_ACCOUNT`: the chart. `account_type` and `normal_balance` drive
+  behaviour; `control_type` marks an account fed by a subledger; `is_postable`
+  is false for group accounts.
+- `T_M_ACC_DEFAULT_ACCOUNT`: account determination. One row per role key
+  (`receivable`, `sales`, `tax_output_ppn` and the rest listed in
+  `posting-contract.md`) per company.
+- `T_M_ACC_PERIOD`: periods with `open` or `closed`.
+- `T_M_ACC_SEQUENCE`: the numbering counter, one row per company, journal and
+  fiscal year.
+- `T_L_ACC_JOURNAL_ENTRY`: the header, with `status`, the source document,
+  the idempotency key and the maker and approver.
+- `T_L_ACC_JOURNAL_LINE`: the lines, with functional-currency `debit` and
+  `credit`, the transaction currency amount and rate, the party and the
+  dimensions.
+
+Add this by raw SQL in the first migration, because Prisma cannot declare it:
+
+```sql
+ALTER TABLE T_L_ACC_JOURNAL_LINE
+  ADD CONSTRAINT ck_acc_line_one_side
+  CHECK (debit >= 0 AND credit >= 0 AND debit * credit = 0 AND debit + credit > 0);
+```
+
+A row-level CHECK of this kind is what Odoo uses (`credit * debit = 0`). The
+research did not confirm from which MySQL 8.0.x release CHECK is enforced or
+how MariaDB behaves, so confirm on the project's server by inserting a row
+that breaks it.
+
+## What the database enforces and what the service must
+
+| Rule | Where |
+|---|---|
+| Exact amounts | Database: `DECIMAL(18,2)` |
+| A line is one side only | Database: the CHECK above |
+| Lines belong to an entry and an existing account | Database: foreign keys |
+| One posting per request | Database: unique `(company_id, idempotency_key)` |
+| One number per journal | Database: unique `(company_id, journal_code, entry_number)` |
+| Debits equal credits per entry | **Service**: `validateEntry`, inside the transaction |
+| Period is open, account active and postable | **Service**: `validateEntry` |
+| Maker differs from approver | **Service**: `validateEntry` |
+| No gaps in numbers | **Service**: locked counter row in the transaction |
+| Posted rows are never changed | **Service**: no UPDATE or DELETE path exists for posted entries; reversal only |
+
+MariaDB/MySQL cannot enforce the balance rule with a constraint: a CHECK is
+single-row and cannot contain a subquery (`real-systems-db-enforcement.md`).
+
+## The posting transaction
+
+One database transaction per posting request. The owner's projects run
+queries through their own database layer and use Prisma for migrations, so
+the steps are given as SQL.
+
+```sql
+START TRANSACTION;
+
+-- 1. Idempotency. If a row exists, return that entry and stop.
+SELECT entry_id, entry_number, status
+  FROM T_L_ACC_JOURNAL_ENTRY
+ WHERE company_id = ? AND idempotency_key = ?;
+
+-- 2. Load what validateEntry needs: the accounts on the lines and the period.
+--    Run buildEntry and validateEntry in the service. On any error: ROLLBACK.
+
+-- 3. Take the next number. The row lock makes concurrent postings wait here.
+SELECT next_number FROM T_M_ACC_SEQUENCE
+ WHERE company_id = ? AND journal_code = ? AND fiscal_year = ?
+   FOR UPDATE;
+UPDATE T_M_ACC_SEQUENCE SET next_number = next_number + 1
+ WHERE company_id = ? AND journal_code = ? AND fiscal_year = ?;
+
+-- 4. Insert the header as posted, then the lines.
+INSERT INTO T_L_ACC_JOURNAL_ENTRY (...) VALUES (...);
+INSERT INTO T_L_ACC_JOURNAL_LINE (...) VALUES (...), (...);
+
+-- 5. Re-check the balance from the stored rows. A non-zero result: ROLLBACK.
+SELECT SUM(debit) - SUM(credit) FROM T_L_ACC_JOURNAL_LINE WHERE entry_id = ?;
+
+COMMIT;
+```
+
+Notes that follow from the sources:
+
+- The sequence row must exist before step 3; create it when the fiscal year
+  is opened. If the transaction rolls back, the number is not consumed, which
+  is what keeps the series without gaps.
+- Two requests with the same idempotency key can both pass step 1. The unique
+  index makes the second insert fail; catch that error and return the first
+  entry.
+- Pass amounts as strings to the driver and read them back as strings. Do not
+  convert money to a JavaScript number at any point.
+- Keep the transaction short. Do the reads and the validation first, and take
+  the counter lock last.
+- Run a scheduled job that checks `SUM(debit) = SUM(credit)` over all posted
+  lines, and each subledger against its control account.
+
+## Reversal
+
+A posted entry is not edited. `reverseEntry` returns a new draft with debit
+and credit swapped and a reference to the original. Post it through the same
+transaction, then set the original's `status` to `reversed` and nothing else.
+To correct an entry: reverse it, then post the right one. Both stay.
+
+## Connecting a module
+
+A module calls the service with an event and amounts by role:
+
+```js
+buildEntry({
+  event_type: "sale_invoice",
+  idempotency_key: "INV-2026-000123:post",
+  source_type: "sales_invoice", source_id: "123",
+  posting_date: "2026-01-15", document_date: "2026-01-15", created_by: 7,
+  amounts: { receivable: "105450000.00", sales: "95000000.00", tax_output_ppn: "10450000.00" },
+}, defaults);
+```
+
+The module computes the business amounts (price, discount, tax) and never
+names an account. `EVENTS` in `posting-core.mjs` decides the side of each
+role, and the company's default accounts decide the account.
+
+`EVENTS` ships with six events: `sale_invoice`, `sale_cogs`, `goods_receipt`,
+`vendor_invoice`, `payment_out`, `receipt_in`. They are the shapes of worked
+entries A1 and P1. Every other event in the catalogue in
+`posting-contract.md` (returns, advances, withholding, depreciation, payroll,
+PPN settlement and the rest) is added the same way: take the worked entry
+with that reference from the topic file, list its debit roles and credit
+roles, add the role keys to the company's default accounts, and add a test
+that replays the worked entry.
+
+## Not in the starter
+
+- Tax calculation. Rates come from effective-dated parameters
+  (`values-to-verify.md`); the starter only posts amounts it is given.
+- Multi-currency revaluation, inventory valuation layers, depreciation runs,
+  payroll calculation, open-item matching and the financial-statement
+  reports. The rules for each are in the topic files; the tables for them are
+  not designed here.
+- Screens. For ledger and data-entry screens use the `nito-design` skill's
+  dense-tool mode.
