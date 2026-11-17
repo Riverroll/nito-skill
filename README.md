@@ -278,6 +278,8 @@ without new research.
 | `assets/seed-sql.mjs` | The setup SQL for a company: chart, account mapping, periods, numbering, bank accounts |
 | `assets/ledger-schema.prisma` | The ledger and the tables around it, for MariaDB/MySQL |
 | `assets/coa-template-id.json` | A default Indonesian chart, 29 accounts, to adapt |
+| `assets/payroll-calc.mjs` | BPJS, PPh 21 (TER monthly, Pasal 17 in December), net pay, the payroll journal amounts |
+| `assets/payroll-params-id.json` | Every payroll rate, cap and TER table as editable data, each with its status |
 
 ### Building accounting from zero
 
@@ -331,8 +333,12 @@ come up most.
   several are unverified or disputed between sources. Confirm before use.
 - The MySQL repository and the SQL have not been run against a database:
   `references/sql-checks.md` is what to run first.
-- Payroll calculation (gross to net, TER, BPJS caps) and tax filing exports
-  (Coretax, e-Bupot) are not built; the postings for them are.
+- Tax filing exports (Coretax, e-Bupot) are not built; the postings are.
+  Payroll covers permanent employees only: no non-employees, gross-up,
+  severance or mid-year joiners.
+- Tax and payroll rates are data, never code: change one by adding a row
+  with a new effective date (`T_M_ACC_TAX_CODE`, `T_M_ACC_PAYROLL_PARAM`, or
+  the showcase's Konfigurasi screen).
 - The shipping and voyage rules rest on secondary sources, and say so.
 
 ---
@@ -413,8 +419,8 @@ test/                            the suites below
 ## Testing
 
 ```sh
-node test/accounting.mjs         # 535: every worked entry balances, every event replays, statements tie out, the service posts once
-node test/ledger.mjs             # 58: the showcase ledger in a real browser: data ties out, rules refused, ERP audit clean
+node test/accounting.mjs         # 560: every worked entry balances, every event replays, statements tie out, the service posts once
+node test/ledger.mjs             # 61: the showcase ledger in a real browser: data ties out, rules refused, ERP audit clean
 node test/site.mjs               # 29: the landing page: links, live journal, reduced motion, audit, and the counts it quotes
 node test/structure.mjs          # 88: the skills load, references resolve, scenes and tools hold their contract
 node test/erp.mjs                # 37: the dense-tool pair

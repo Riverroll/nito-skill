@@ -220,6 +220,26 @@ model T_M_ACC_TAX_CODE {
   @@unique([company_id, code, effective_from], map: "uq_acc_tax_code")
 }
 
+/// Payroll parameters, editable by an admin: BPJS rates and caps, PTKP, TER
+/// tables, Pasal 17 brackets. One row per key per effective date; a change is
+/// a new row with a later effective_from, never an edit of an old one.
+/// param_key is a dotted path ("bpjs.jp_cap", "ter.A"), param_value is JSON.
+/// payroll-calc.mjs setsFromRows + resolveParams turn the rows into parameters.
+model T_M_ACC_PAYROLL_PARAM {
+  payroll_param_id Int      @id @default(autoincrement())
+  company_id       Int
+  param_key        String   @db.VarChar(50)
+  param_value      String   @db.Text
+  effective_from   DateTime @db.Date
+  legal_basis      String?  @db.VarChar(150)
+  /// verified, secondary, unverified, conflict: copied from values-to-verify.md
+  status           String   @db.VarChar(20)
+  updated_by       Int?
+  updated_at       DateTime @default(now()) @updatedAt
+
+  @@unique([company_id, param_key, effective_from], map: "uq_acc_payroll_param")
+}
+
 /// A payment matched to an invoice on a control account, in part or whole.
 /// Open items are the control-account lines less their allocations, so the
 /// subledger always ties to the GL (rule 8). Undoing a match sets undone_at;

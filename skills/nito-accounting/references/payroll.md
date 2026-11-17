@@ -17,3 +17,41 @@ The worked payroll (CONSTRUCTED; employee TK/0, wage 8,000,000, JKK class 0.24%)
 | PY3 | Remit by the 15th | Utang BPJS Ketenagakerjaan 739,200; Utang BPJS Kesehatan 400,000; Utang PPh 21 125,448 | Bank 1,264,648 | 1,264,648 |
 | PY4 | THR accrual, 8,000,000 / 12 (final month 666,663) | Beban THR 666,667 | Akrual THR 666,667 | 666,667 |
 | PY5 | December PPh 21: gross 100,358,400; biaya jabatan 5% (UNVERIFIED); JHT+JP 2,880,000; PTKP 54,000,000; PKP 38,460,000; tax 1,923,000 less 1,379,928 withheld | Utang Gaji 543,072 | Utang PPh 21 543,072 | 543,072 |
+
+## Calculating payroll: `assets/payroll-calc.mjs`
+
+The calculation is code; every number it uses is a parameter an admin can
+change. Parameters live in `assets/payroll-params-id.json` (the starting
+values, each with its status from `values-to-verify.md`) or, in a running
+ERP, in `T_M_ACC_PAYROLL_PARAM` rows edited from a settings screen.
+
+| Function | Does |
+|---|---|
+| `resolveParams(sets, date)` | The parameters in force on a date: every set with `effective_from` on or before it, merged in date order |
+| `setsFromRows(rows)` | Turns `T_M_ACC_PAYROLL_PARAM` rows (`param_key` "bpjs.jp_cap", `param_value` JSON) into sets |
+| `monthlyPayroll(employee, params)` | BPJS employer and employee, TER gross, PPh 21 at the TER rate, net pay |
+| `annualPph21(year, params)` | Last-period Pasal 17 calculation less tax withheld (PY5); a negative `due` is owed back to the employee |
+| `accrualAmounts(results)` | Sums a payroll run into the amounts of one `payroll_accrual` request (PY1) |
+
+**Changing a rate.** Never edit the old value: add a set (or a row) with a
+later `effective_from` holding only the keys that change. Payroll for earlier
+months still computes with the old value, and the change is on record.
+
+```json
+{ "effective_from": "2026-03-01", "bpjs": { "jp_cap": "11086300" } }
+```
+
+**What the parameters decide.** `ter_gross_includes` lists the employer
+premiums added to TER gross (JKK and JKM per PMK 168/2023; employer health
+is included in the starting file but UNVERIFIED, see above). `jkk_er` is the
+company's JKK class rate; an employee's `jkk_rate` overrides it. Biaya
+jabatan and the PKP rounding are UNVERIFIED and only used in the last period.
+
+**Not covered.** Non-employees (gross x 50% x Pasal 17), employer-borne PPh
+21 (gross-up), mid-year joiners' annualisation, severance, the THR amount
+itself (pass it as `variable_pay`), and the e-Bupot export.
+
+The worked payroll above (TK/0, 8,000,000) is recomputed by the tests from the
+parameter file: PPh 21 125,448, net 7,554,552, and the PY5 true-up 543,072.
+So are three months of the DJP deck's own example (Tuan A, K/0, page 28):
+3,910,400, 4,911,200 and 9,014,400.

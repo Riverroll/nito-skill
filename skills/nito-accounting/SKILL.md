@@ -88,6 +88,8 @@ Read only the files the question needs.
 | `assets/reports.mjs` | Statements, cash flow, open items, aging, dashboard KPIs, margin per voyage or project |
 | `assets/period-close.mjs` | Year-end closing, opening balances, FX revaluation |
 | `assets/inventory-valuation.mjs` | Moving average and FIFO |
+| `assets/payroll-calc.mjs` | BPJS, PPh 21 TER and Pasal 17, net pay, the payroll accrual amounts |
+| `assets/payroll-params-id.json` | The payroll parameters, editable, each with its status |
 | `assets/seed-sql.mjs` | The setup SQL for a company |
 | `assets/ledger-schema.prisma` | The tables |
 | `assets/coa-template-id.json` | The default chart |
