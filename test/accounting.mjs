@@ -31,8 +31,8 @@ ok("frontmatter names the skill nito-accounting", /^name: nito-accounting$/m.tes
 ok("frontmatter has a description", /^description: .{80,}$/m.test(fm?.[1] ?? ""));
 
 // ---- every reference the router names exists, and none is orphaned ---------
-const named = new Set([...skillMd.matchAll(/references\/([a-z0-9-]+\.md)/g)].map((m) => m[1]));
-const onDisk = readdirSync(refs).filter((f) => f.endsWith(".md"));
+const named = new Set([...skillMd.matchAll(/references\/([a-z0-9/-]+\.md)/g)].map((m) => m[1]));
+const onDisk = readdirSync(refs, { recursive: true }).filter((f) => f.endsWith(".md"));
 for (const f of named) ok(`references/${f} exists`, existsSync(join(refs, f)));
 for (const f of onDisk) ok(`references/${f} is reachable from SKILL.md`, named.has(f));
 for (const a of [...skillMd.matchAll(/assets\/([a-z0-9.-]+)/g)].map((m) => m[1]))
@@ -191,8 +191,10 @@ const more = [
   // supply chain and voyage: constructed in references/domains/
   ["SC2 freight added to stock", "landed_cost", { inventory: "2000000.00", landed_cost_clearing: "2000000.00" }, "2000000.00"],
   ["SC2 forwarder's invoice", "landed_cost_invoice", { landed_cost_clearing: "2000000.00", tax_input_ppn: "220000.00", payable: "2220000.00" }, "2220000.00"],
-  ["VY1 freight invoiced at loading", "freight_invoice", { receivable: "555000000.00", contract_liability: "500000000.00", tax_output_ppn: "55000000.00" }, "555000000.00"],
-  ["VY2 half the voyage done at month end", "voyage_revenue", { contract_liability: "250000000.00", freight_revenue: "250000000.00" }, "250000000.00"],
+  ["VY1 freight invoiced at loading", "advance_billing", { receivable: "555000000.00", contract_liability: "500000000.00", tax_output_ppn: "55000000.00" }, "555000000.00"],
+  ["VY2 half the voyage done at month end", "revenue_over_time", { contract_liability: "250000000.00", earned_revenue: "250000000.00" }, "250000000.00"],
+  ["CR1 annual subscription billed ahead", "advance_billing", { receivable: "13320000.00", contract_liability: "12000000.00", tax_output_ppn: "1320000.00" }, "13320000.00"],
+  ["CR1 one month earned", "revenue_over_time", { contract_liability: "1000000.00", earned_revenue: "1000000.00" }, "1000000.00"],
   ["VY3 demurrage once highly probable", "demurrage_claim", { contract_asset: "30000000.00", demurrage_revenue: "30000000.00" }, "30000000.00"],
   ["VY3 demurrage invoiced", "demurrage_invoice", { receivable: "33300000.00", contract_asset: "30000000.00", tax_output_ppn: "3300000.00" }, "33300000.00"],
   ["VY4 bunkers burned", "bunker_consumption", { voyage_expense: "440000000.00", bunker_inventory: "440000000.00" }, "440000000.00"],
@@ -253,6 +255,20 @@ ok("core: amounts above 2^53 stay exact", core.fromMinor(core.toMinor("900719925
   let threw = false; try { core.reverseEntry({ ...posted[0], status: "draft" }, {}); } catch { threw = true; }
   ok("core: a draft cannot be reversed", threw);
 }
+// ---- the event catalogue people read says what the code does ----
+{
+  const cat = readFileSync(join(refs, "event-catalogue.md"), "utf8");
+  const rows = new Map([...cat.matchAll(/^\| `([a-z0-9_]+)` \|[^|]*\| ([^|]*) \| ([^|]*) \| ([^|]*) \|$/gm)]
+    .map((m) => [m[1], { debit: m[2].trim(), credit: m[3].trim(), ref: m[4].trim() }]));
+  const list = (xs) => xs.map((x) => "`" + x + "`").join(", ");
+  const off = Object.entries(core.EVENTS).filter(([k, s]) => {
+    const r = rows.get(k);
+    return !r || r.debit !== list(s.debit) || r.credit !== list(s.credit) || r.ref !== s.ref;
+  }).map(([k]) => k);
+  ok(`event catalogue: all ${Object.keys(core.EVENTS).length} events listed with the code's roles and refs`, off.length === 0, off.join(", "));
+  ok("event catalogue: lists no event the code does not have", [...rows.keys()].every((k) => core.EVENTS[k]));
+}
+
 // ---- reports, closing, revaluation, inventory: tied to the worked tie-out ----
 const rep = await import(join(skill, "assets", "reports.mjs"));
 const pc = await import(join(skill, "assets", "period-close.mjs"));
@@ -374,6 +390,44 @@ const inv = await import(join(skill, "assets", "inventory-valuation.mjs"));
     k.cash_and_bank === "444000000.00" && k.receivables === "50000000.00" && k.payables === "60000000.00", JSON.stringify(k));
   ok("dashboard: revenue 82,000,000, profit 11,000,000, gross margin 39.02%",
     k.revenue_ytd === "82000000.00" && k.net_profit_ytd === "11000000.00" && k.gross_margin_pct === "39.02", JSON.stringify(k));
+}
+
+// ---- invoices with several revenue lines, margin per voyage, the seed SQL ----
+{
+  const b = core.buildEntry({ event_type: "sale_invoice", ...head(70),
+    amounts: { receivable: "105450000.00", tax_output_ppn: "10450000.00",
+      sales: [{ amount: "60000000.00", account: "4-1000", analytic_ref: "SHP-1" }, { amount: "35000000.00", account: "4-2000", analytic_ref: "SHP-2" }] } }, defaults);
+  ok("core: one invoice, two revenue accounts from the product categories",
+    b.ok && b.entry.lines.length === 4 && b.entry.lines.filter((l) => l.role === "sales").map((l) => l.account).join() === "4-1000,4-2000"
+    && core.validateEntry(b.entry, ctx).ok, JSON.stringify(b.errors));
+  const nb = core.buildEntry({ event_type: "sale_invoice", ...head(71), amounts: { receivable: "1.00", sales: [{ amount: "1.00" }] } }, { receivable: "1-1300" });
+  ok("core: a part with no account and no default is refused", !nb.ok && /no account configured/.test(nb.errors.join()));
+
+  const rep2 = await import(join(skill, "assets", "reports.mjs"));
+  const acc = Object.fromEntries(coa.accounts.map((a) => [a.code, a]));
+  const voy = [
+    { status: "posted", posting_date: "2026-01-31", lines: [{ account: "2-1300", debit: "250000000.00", credit: "0.00" }, { account: "4-2000", debit: "0.00", credit: "250000000.00", analytic_ref: "VOY-014" }] },
+    { status: "posted", posting_date: "2026-01-31", lines: [{ account: "5-0000", debit: "440000000.00", credit: "0.00", analytic_ref: "VOY-014" }, { account: "1-1500", debit: "0.00", credit: "440000000.00" }] },
+    { status: "posted", posting_date: "2026-02-05", lines: [{ account: "2-1300", debit: "250000000.00", credit: "0.00" }, { account: "4-2000", debit: "0.00", credit: "250000000.00", analytic_ref: "VOY-014" }] },
+    { status: "posted", posting_date: "2026-02-06", lines: [{ account: "1-1300", debit: "30000000.00", credit: "0.00" }, { account: "4-2000", debit: "0.00", credit: "30000000.00", analytic_ref: "VOY-014" }] },
+    { status: "draft", posting_date: "2026-02-06", lines: [{ account: "6-0000", debit: "99.00", credit: "0.00", analytic_ref: "VOY-014" }, { account: "1-1200", debit: "0.00", credit: "99.00" }] },
+  ];
+  const v = rep2.byAnalytic(voy, acc);
+  ok("reports: margin per voyage: 530,000,000 revenue, 440,000,000 cost, drafts left out",
+    v.length === 1 && v[0].revenue === "530000000.00" && v[0].costs === "440000000.00" && v[0].margin === "90000000.00", JSON.stringify(v));
+
+  const { seedSql } = await import(join(skill, "assets", "seed-sql.mjs"));
+  const sql = seedSql({ company_id: 1, fiscal_year: 2026, chart: coa, defaults: { receivable: "1-1300", bank: "1-1200" },
+    journals: ["PJ", "PB", "JU"], cashbanks: [{ journal_code: "BCA", name: "Bank BCA", kind: "bank", account: "1-1200" }] });
+  ok("seed: one INSERT per account, per role, per period, per journal",
+    (sql.match(/INSERT INTO T_M_ACC_ACCOUNT /g) ?? []).length === coa.accounts.length
+    && (sql.match(/INSERT INTO T_M_ACC_DEFAULT_ACCOUNT /g) ?? []).length === 2
+    && (sql.match(/INSERT INTO T_M_ACC_PERIOD /g) ?? []).length === 12
+    && (sql.match(/INSERT INTO T_M_ACC_SEQUENCE /g) ?? []).length === 4 && /START TRANSACTION;[\s\S]*COMMIT;/.test(sql));
+  ok("seed: periods run to the right month ends", sql.includes("'2026-02-01', '2026-02-28'") && sql.includes("'2026-12-01', '2026-12-31'"));
+  ok("seed: quotes in names are escaped", seedSql({ company_id: 1, fiscal_year: 2026, chart: { accounts: [{ code: "1", name: "Kas O'Brien", type: "asset", normal_balance: "debit" }] }, defaults: {}, journals: [] }).includes("'Kas O''Brien'"));
+  let threw = false; try { seedSql({ company_id: 1, fiscal_year: 2026, chart: coa, defaults: { bank: "9-9999" }, journals: [] }); } catch { threw = true; }
+  ok("seed: a role pointing outside the chart is refused before any SQL is written", threw);
 }
 
 // ---- the posting service, through the in-memory repository ----

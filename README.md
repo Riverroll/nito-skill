@@ -18,11 +18,17 @@ table, or whenever you ask for something to look "like Apple", "premium" or
 "high-end" — you don't have to invoke it by name.
 
 The plugin carries a second skill, **nito-accounting**: the accounting an ERP
-needs, Indonesian context included. It answers accounting questions directly
-(journal entries, COA, GL, AR, AP, PPN, PPh, payroll, close) and gives a new
-ERP a ledger to start from: a chart template, a validated Prisma schema for
-MariaDB/MySQL and a tested posting core with fifteen events. The ledger logic
-stays the same in every ERP; the chart and the company configuration change.
+needs, Indonesian context included, as knowledge and as a tested build kit.
+It answers accounting questions directly (journal entries, COA, GL, AR, AP,
+PPN, PPh, payroll, close), and it builds accounting into an ERP from zero
+without new research: a step-by-step guide, a schema for MariaDB/MySQL, a
+posting core with 61 events each replayed from a worked entry, a posting
+service with an outbox, the statements and cash flow, closing, FX
+revaluation, inventory valuation, and the dashboard figures. An integration
+playbook and domain maps connect any module to the ledger, from a CRM that
+only issues invoices to supply chain and voyage and shipping. A primer in
+Bahasa Indonesia onboards the team. The ledger logic stays the same in every
+ERP; the chart and the company configuration change.
 See [The showcase ledger](#the-showcase-ledger) for both skills working on one
 screen.
 
@@ -75,11 +81,18 @@ skills/nito-design/
   assets/apple-base.css        tokens and primitives for a NEW page (placeholder palette — replace it)
   assets/type-scale.json       all 106 measured typography classes
 skills/nito-accounting/
-  SKILL.md                     nine rules that hold in every ERP, and which file answers which question
-  references/                  15 topic files, 106 worked journal entries, values to re-verify
+  SKILL.md                     nine rules, and which file answers which question
+  references/                  build-from-zero, integration playbook, event catalogue, domains/
+                               (CRM, supply chain, voyage, others), 15 topic files, 121 worked
+                               entries, SQL checks, team primer (Bahasa Indonesia), values to re-verify
+  assets/posting-core.mjs      the rules and 61 events
+  assets/posting-service.mjs   post, reverse, outbox worker; in-memory and MySQL repositories
+  assets/reports.mjs           statements, cash flow, open items, aging, dashboard, margin per voyage
+  assets/period-close.mjs      year-end closing, opening balances, FX revaluation
+  assets/inventory-valuation.mjs  moving average and FIFO
+  assets/seed-sql.mjs          setup SQL for a company
+  assets/ledger-schema.prisma  the ledger and the tables around it, for MariaDB/MySQL
   assets/coa-template-id.json  default Indonesian chart, 29 accounts (constructed, adapt it)
-  assets/ledger-schema.prisma  six ledger tables for MariaDB/MySQL
-  assets/posting-core.mjs      buildEntry, validateEntry, reverseEntry, trialBalance, percentOf
 example/ledger/                the showcase: an accounting ERP built on both skills
 ```
 

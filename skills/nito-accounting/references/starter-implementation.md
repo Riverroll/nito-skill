@@ -14,9 +14,14 @@ then extend them. Do not redesign the ledger per project.
 
 | File | What it is | How it was checked |
 |---|---|---|
-| `assets/ledger-schema.prisma` | Six tables: accounts, default accounts, periods, numbering counter, entry header, entry lines | `prisma validate` on Prisma 7 reports the schema valid. Not migrated to a database. |
-| `assets/posting-core.mjs` | Pure functions: `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `percentOf`, `toMinor`, `fromMinor`; fifteen events | `test/accounting.mjs` replays worked entries A1, A2, P1, P2, V2, V3, F1, F2, C1, C2 and C4 and checks every rejection rule |
-| `assets/coa-template-id.json` | Default chart, 29 accounts | `test/accounting.mjs` checks codes, types and normal balances |
+| `assets/ledger-schema.prisma` | The ledger (accounts, default accounts, periods, numbering, entries, lines) and around it: payment journals, tax codes, allocations, bank statements and reconciliation, the posting-request outbox, the fixed-asset register | `prisma validate` on Prisma 7 reports it valid. Not migrated to a database. |
+| `assets/posting-core.mjs` | `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `percentOf`, `toMinor`, `fromMinor`, and `EVENTS` (listed in `event-catalogue.md`) | `test/accounting.mjs` replays every event from a worked entry and checks every rejection rule |
+| `assets/posting-service.mjs` | The service an ERP calls: `post`, `reverse`, `drainOutbox`, `outboxRow`; an in-memory repository and a MySQL one | Tested through the in-memory repository. The MySQL repository is not run against a database. |
+| `assets/reports.mjs` | Income statement, balance sheet, indirect cash flow, open items with allocations, aging, dashboard KPIs, margin per `analytic_ref` | Tied to the E1-E19 tie-out of `close-and-statements.md` |
+| `assets/period-close.mjs` | Year-end closing entries, opening balances, FX revaluation | Tied to E17-E19, E22 and C5 |
+| `assets/inventory-valuation.mjs` | Moving average and FIFO cost per issue | Tied to I1 |
+| `assets/seed-sql.mjs` | The setup SQL for a company: chart, default accounts, periods, numbering, payment journals | Output checked by the test; run the SQL yourself |
+| `assets/coa-template-id.json` | Default chart, 29 accounts, with `cash_flow`, `pl` and `control` flags | Codes, types and normal balances checked |
 
 The schema follows the naming already used in the owner's projects (`T_M_`
 master tables, `T_L_` transaction tables, snake_case columns,
@@ -156,25 +161,10 @@ The module computes the business amounts (price, discount, tax) and never
 names an account. `EVENTS` in `posting-core.mjs` decides the side of each
 role, and the company's default accounts decide the account.
 
-`EVENTS` ships with fifteen events, each the shape of a worked entry:
-
-| Event | Debit roles | Credit roles | Worked entry |
-|---|---|---|---|
-| `sale_invoice` | receivable | sales, tax_output_ppn | A1 |
-| `sale_cogs` | cogs | inventory | A1 |
-| `service_invoice` | receivable | service_revenue, tax_output_ppn | A2 |
-| `receipt_in` | bank, prepaid_tax_22_23_25, bank_charges | receivable | A2 (PPh 23 cut by the customer), C4 (fee deducted) |
-| `goods_receipt` | inventory | stock_received_not_billed | P1 |
-| `vendor_invoice` | stock_received_not_billed, tax_input_ppn | payable | P1 |
-| `vendor_service_invoice` | service_expense, tax_input_ppn | payable | P2 |
-| `payment_out` | payable, bank_charges | bank, wht_payable_23 | P1, P2 (PPh 23 withheld), C1 (transfer fee) |
-| `cash_transfer` | bank_in | bank_out | C2 (bank to petty cash) |
-| `cash_receipt_other` | bank | counterpart | C1 (interest) |
-| `cash_payment_other` | counterpart | bank | C1 (bank charges) |
-| `ppn_settlement` | tax_output_ppn, ppn_receivable | tax_input_ppn, ppn_payable | V2, V3 |
-| `tax_payment` | ppn_payable, wht_payable_23 | bank | V2, P2 |
-| `asset_acquisition` | fixed_asset, tax_input_ppn | payable | F1 |
-| `depreciation` | depreciation_expense | accumulated_depreciation | F2 |
+`EVENTS` covers every cycle with a worked entry: sales, purchasing, accruals,
+cash, inventory and production, fixed assets, payroll, tax, and revenue over
+time. The full list, with roles and the entry each reproduces, is
+`event-catalogue.md`; the test keeps that list and the code in step.
 
 A role left out of the request is skipped, so one event covers the sale with
 and without PPN, and the payment with and without withholding.
@@ -221,13 +211,11 @@ transaction show the shape of the service a real ERP puts around the core.
 
 ## Not in the starter
 
-- The tax parameter table. `percentOf` does the arithmetic; the rates come
-  from effective-dated parameters (`values-to-verify.md`) that the project
-  loads after checking them.
-- Multi-currency revaluation, inventory valuation layers, payroll
-  calculation and the year-end closing entry. The rules for each are in the
-  topic files; the tables for them are not designed here. The showcase ledger
-  does depreciation runs, open-item matching and the statements in page code,
-  not in the starter.
+- Running it against a database: the MySQL repository and the SQL have not
+  been run during the research. `sql-checks.md` has what to run first.
+- Payroll calculation (gross to net, TER, BPJS caps) and tax filing exports
+  (Coretax, e-Bupot). The postings exist (`payroll_*`, tax events); the
+  calculations and file formats are not built, and several payroll rates are
+  unresolved in `values-to-verify.md`.
 - Screens. For ledger and data-entry screens use the `nito-design` skill's
-  dense-tool mode.
+  dense-tool mode; `example/ledger/` shows them.

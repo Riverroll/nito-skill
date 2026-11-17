@@ -86,8 +86,14 @@ const open = async (width, { reduced = false } = {}) => {
   throw new Error("page did not boot");
 };
 // scroll the whole page so every lazy picture is asked for, then come back up
-const scrollThrough = () => evaluate(`(async () => { for (let y = 0; y < document.documentElement.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); }
-  await new Promise((r) => setTimeout(r, 800)); scrollTo(0, 0); })()`);
+// then wait (up to 8s) for what was asked to arrive, instead of guessing a delay
+const scrollThrough = () => evaluate(`(async () => {
+  const wait = (t) => new Promise((r) => setTimeout(r, t));
+  for (let y = 0; y < document.documentElement.scrollHeight; y += 600) { scrollTo(0, y); await wait(60); }
+  document.querySelector(".clip")?.scrollIntoView({ block: "center" }); await wait(100);
+  const pending = () => [...document.images].filter((i) => i.getBoundingClientRect().width > 0 && !(i.complete && i.naturalWidth > 0)).length;
+  for (let t = 0; t < 80 && pending(); t++) await wait(100);
+  scrollTo(0, 0); })()`);
 
 try {
   await open(1440);

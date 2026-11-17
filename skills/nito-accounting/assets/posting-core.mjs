@@ -118,9 +118,12 @@ export const EVENTS = {
   current_tax:            { ref: "T2", debit: ["income_tax_expense"], credit: ["prepaid_tax_22_23_25", "income_tax_payable"] },
   deferred_tax:           { ref: "A5, F2, T2", debit: ["deferred_tax_asset"], credit: ["deferred_tax_income"] },
 
+  // ---- revenue over time: billed ahead, earned as the work or the voyage
+  // progresses (IFRS 15 over-time recognition; references/domains/)
+  advance_billing:        { ref: "VY1, CR1", debit: ["receivable"], credit: ["contract_liability", "tax_output_ppn"] },
+  revenue_over_time:      { ref: "VY2, CR1", debit: ["contract_liability", "contract_asset"], credit: ["earned_revenue"] },
+
   // ---- voyage and freight (references/domains/voyage-shipping.md)
-  freight_invoice:        { ref: "VY1", debit: ["receivable"], credit: ["contract_liability", "tax_output_ppn"] },
-  voyage_revenue:         { ref: "VY2", debit: ["contract_liability", "contract_asset"], credit: ["freight_revenue"] },
   demurrage_claim:        { ref: "VY3", debit: ["contract_asset"], credit: ["demurrage_revenue"] },
   demurrage_invoice:      { ref: "VY3", debit: ["receivable"], credit: ["contract_asset", "tax_output_ppn"] },
   bunker_consumption:     { ref: "VY4", debit: ["voyage_expense"], credit: ["bunker_inventory"] },
@@ -160,15 +163,24 @@ export function buildEntry(request, defaults) {
     for (const role of shape[side]) {
       const raw = request.amounts?.[role];
       if (raw === undefined) continue; // an optional role, for example no PPN for a non-PKP company
-      let minor;
-      try { minor = toMinor(raw); } catch (e) { errors.push(`${role}: ${e.message}`); continue; }
-      if (minor === 0n) continue;
-      const account = defaults[role];
-      // A missing key rejects the posting. Falling back to a suspense account
-      // would hide a configuration error.
-      if (!account) { errors.push(`no account configured for role "${role}"`); continue; }
-      lines.push({ account, role, debit: side === "debit" ? fromMinor(minor) : fromMinor(0n),
-                   credit: side === "credit" ? fromMinor(minor) : fromMinor(0n) });
+      // One amount, or several parts: an invoice whose lines go to different
+      // revenue accounts sends [{ amount, account, analytic_ref }, ...]. The
+      // account of a part comes from the module's own configuration (the
+      // product category's revenue account), never typed by a user.
+      const parts = Array.isArray(raw) ? raw : [{ amount: raw }];
+      for (const part of parts) {
+        let minor;
+        try { minor = toMinor(part.amount); } catch (e) { errors.push(`${role}: ${e.message}`); continue; }
+        if (minor === 0n) continue;
+        const account = part.account ?? defaults[role];
+        // A missing key rejects the posting. Falling back to a suspense account
+        // would hide a configuration error.
+        if (!account) { errors.push(`no account configured for role "${role}"`); continue; }
+        lines.push({ account, role, debit: side === "debit" ? fromMinor(minor) : fromMinor(0n),
+                     credit: side === "credit" ? fromMinor(minor) : fromMinor(0n),
+                     ...(part.analytic_ref ? { analytic_ref: part.analytic_ref } : {}),
+                     ...(part.description ? { description: part.description } : {}) });
+      }
     }
   }
   if (errors.length) return { ok: false, errors };

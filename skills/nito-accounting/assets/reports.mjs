@@ -148,6 +148,26 @@ export function aging(items, { asOf, buckets = [30, 60, 90] }) {
   return { buckets: names, rows: out, total: Object.fromEntries(names.map((n) => [n, S(total[n])])) };
 }
 
+// Profit or loss per operational object: a voyage, a shipment, a project, a
+// truck trip. Reads analytic_ref on the lines, so any ERP that sets it gets a
+// margin report without a module-specific table.
+export function byAnalytic(entries, accounts, { from, to } = {}) {
+  const out = new Map();
+  for (const e of entries) {
+    if (!counts(e) || isClosing(e) || (from && e.posting_date < from) || (to && e.posting_date > to)) continue;
+    for (const l of e.lines) {
+      const a = accounts[l.account];
+      if (!l.analytic_ref || !a || !PL_TYPES.has(a.type) || a.closing_only) continue;
+      const r = out.get(l.analytic_ref) ?? { revenue: 0n, costs: 0n };
+      const m = toMinor(l.debit) - toMinor(l.credit), g = plGroup(a);
+      if (g === "revenue" || (g === "other" && m < 0n)) r.revenue += -m; else r.costs += m;
+      out.set(l.analytic_ref, r);
+    }
+  }
+  return [...out].sort(([a], [b]) => a.localeCompare(b))
+    .map(([ref, r]) => ({ analytic_ref: ref, revenue: S(r.revenue), costs: S(r.costs), margin: S(r.revenue - r.costs) }));
+}
+
 // The dashboard. Everything is found by account type and flags, so it works on
 // any chart and on a ledger fed by nothing but CRM invoices and receipts.
 export function kpis(entries, accounts, { asOf, fiscalYearStart, periodStart }) {
