@@ -85,9 +85,8 @@ photographs with flat dark panels reads as two pages interleaved.
 
 `index.html` at the repo root shows only what the two skills made. Every file
 here is a capture of a page in this repository, taken in headless Chrome at
-2&times; and re-encoded to WebP or H.264. Nothing is generated and nothing is
-from outside the repository except the one photograph inside the Ridge
-capture.
+2&times; and re-encoded to WebP or H.264. Nothing is generated and nothing
+comes from outside the repository.
 
 | File | What it captures | Licence |
 |---|---|---|
@@ -97,7 +96,7 @@ capture.
 | `ledger-post-start-2160.webp`, `ledger-post-start-1080.webp` | the clip's first frame, under the clip | MIT, this repository |
 | `ledger-post-end-2160.webp`, `ledger-post-end-1080.webp` | the clip's last frame, for reduced motion and no JS | MIT, this repository |
 | `erp-before.webp`, `erp-before-1000.webp`, `erp-after.webp`, `erp-after-1000.webp` | `example/erp/before.html` and `after.html` | MIT, this repository |
-| `ridge.webp`, `ridge-1000.webp` | `example/index.html`, the hero, which contains `hero-2400.webp`: [Kilauea Lava Lake (12792432484)](https://commons.wikimedia.org/wiki/File:Kilauea_Lava_Lake_(12792432484).jpg), U.S. Geological Survey | Public domain photograph, MIT page |
+| `fixme-before.webp`, `fixme-before-1000.webp`, `fixme-after.webp`, `fixme-after-1000.webp` | `example/fix-me/before.html` and `after.html` | MIT, this repository |
 
 ## Why these and not stock photography
 

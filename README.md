@@ -21,7 +21,7 @@ The plugin carries a second skill, **nito-accounting**: the accounting an ERP
 needs, Indonesian context included. It answers accounting questions directly
 (journal entries, COA, GL, AR, AP, PPN, PPh, payroll, close) and gives a new
 ERP a ledger to start from: a chart template, a validated Prisma schema for
-MariaDB/MySQL and a tested posting core with twelve events. The ledger logic
+MariaDB/MySQL and a tested posting core with fifteen events. The ledger logic
 stays the same in every ERP; the chart and the company configuration change.
 See [The showcase ledger](#the-showcase-ledger) for both skills working on one
 screen.
@@ -345,7 +345,12 @@ python3 -m http.server 4100   # then http://localhost:4100/example/ledger/
 `skills/nito-accounting/assets/posting-core.mjs`. Sales, purchases, receipts,
 payments, fixed assets, depreciation, the PPN settlement and tax payments are
 documents that send amounts by role; the core turns them into balanced
-entries, and the company's account determination picks the accounts. Manual
+entries, and the company's account determination picks the accounts. Each
+cash and bank account (Kas, Bank BCA, Bank Mandiri) is a payment journal with
+its own numbers: register a payment from the invoice, pick where the money
+went, record the method, the bank's reference, a fee or a part payment.
+Transfers between accounts, other cash lines (interest, charges) and a bank
+reconciliation against the statement are on the Kas dan bank page. Manual
 journals need a second user to approve them. Posted entries are never edited:
 cancelling a document posts a reversing entry and both stay. Closed periods,
 inactive accounts, manual postings to control accounts, unbalanced entries and

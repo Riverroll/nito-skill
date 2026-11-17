@@ -11,7 +11,7 @@
   /* The landing page for nito-skill, built with nito-design's marketing mode.
      Its own palette: the green of a ruled ledger book as the one accent, on
      the measured neutrals. Every picture on it is something the two skills
-     made: the showcase ledger, the Ridge page, the before-and-after pairs. */
+     made: the showcase ledger and the before-and-after pairs. */
   :root {
     --accent: #0f766e;          /* 5.47:1 on #fff, 4.70:1 on #f5f5f7 */
     --accent-hover: #0d6b64;
@@ -194,7 +194,7 @@
         <div class="stat" data-reveal><b>106</b><span class="t-body-reduced">type classes read from apple.com's shipped stylesheets</span></div>
         <div class="stat" data-reveal><b>338</b><span class="t-body-reduced">headlines counted for the copy rules</span></div>
         <div class="stat" data-reveal><b>106</b><span class="t-body-reduced">worked journal entries, each re-added by a test</span></div>
-        <div class="stat" data-reveal><b>12</b><span class="t-body-reduced">posting events, each replaying one of those entries</span></div>
+        <div class="stat" data-reveal><b>15</b><span class="t-body-reduced">posting events, each replaying one of those entries</span></div>
       </div>
     </div>
   </section>
@@ -205,15 +205,17 @@
       <h2 class="t-headline-elevated" data-reveal>Pages with a pulse.</h2>
       <p class="t-intro" data-reveal>A spacing ladder, rhythm in em, a type scale with its tracking, five easing curves and sticky scroll. Laid over your palette, never in place of it.</p>
     </div>
-    <figure class="frame-img" data-reveal>
-      <picture>
-        <source media="(max-width: 734px)" srcset="example/media/site/ridge-1000.webp">
-        <img src="example/media/site/ridge.webp" width="2000" height="1250" loading="lazy" decoding="async"
-             alt="The Ridge example page: the headline Nineteen minutes over a night photograph of a lava lake, its crust split by bright orange seams.">
-      </picture>
-    </figure>
+    <div class="compare" data-reveal>
+      <img src="example/media/site/fixme-before.webp" width="2000" height="1250" loading="lazy" decoding="async"
+           alt="Before: a dark agency page with a teal accent, cards in different colours, and headline sizes that do not step.">
+      <img class="after" src="example/media/site/fixme-after.webp" width="2000" height="1250" loading="lazy" decoding="async"
+           alt="After: the same page, same copy and same teal, with one card treatment, three ink steps and an even rhythm.">
+      <span class="rule" aria-hidden="true"></span>
+      <span class="tag tag--l" aria-hidden="true">Before</span><span class="tag tag--r" aria-hidden="true">After</span>
+      <input type="range" min="0" max="100" value="50" aria-label="Compare the page before and after nito-design: slide right to show more of the before page">
+    </div>
     <div class="section-content">
-      <a class="more" href="example/">See the Ridge page</a>
+      <p class="t-body-reduced more-note" data-reveal>Same markup, same copy, same teal. Six accent hues and fifteen text colours on the left; nothing countable left on the right. Drag to compare.</p>
     </div>
   </section>
 
@@ -319,6 +321,7 @@
           <li data-reveal><b>Journals</b><span>Adjusting, reversing, closing and correcting entries. Nothing posted is ever edited.</span></li>
           <li data-reveal><b>AR and AP</b><span>Open items that tie to the control account, PPN Keluaran and Masukan, PPh 23.</span></li>
           <li data-reveal><b>Stock and assets</b><span>Valuation and COGS, GR/IR, depreciation commercial and fiscal, leases.</span></li>
+          <li data-reveal><b>Cash and bank</b><span>A journal per account, register payment from the invoice, fees, transfers, reconciliation.</span></li>
           <li data-reveal><b>Payroll</b><span>BPJS, PPh 21 with TER, THR and severance.</span></li>
           <li data-reveal><b>Close</b><span>Period locks, multi-currency revaluation, the statements derived from the ledger.</span></li>
         </ul>
@@ -348,8 +351,8 @@
       <h2 class="t-headline" data-reveal>Checked in a browser.</h2>
       <p class="t-intro" data-reveal>Each suite runs from the repo with one command. Most of them drive a real browser.</p>
       <ul class="proof" data-reveal>
-        <li><b>accounting</b><span>refs resolve, every worked entry balances, every event replays</span><em>357</em></li>
-        <li><b>ledger</b><span>the showcase ties out, refuses what it must, fits desktop and phone</span><em>43</em></li>
+        <li><b>accounting</b><span>refs resolve, every worked entry balances, every event replays</span><em>363</em></li>
+        <li><b>ledger</b><span>the showcase ties out, refuses what it must, fits desktop and phone</span><em>58</em></li>
         <li><b>structure</b><span>the skills load, references resolve, tools hold their contract</span><em>88</em></li>
         <li><b>erp</b><span>the dense-tool pair: 21 findings before, none after</span><em>37</em></li>
         <li><b>composition</b><span>a correct page that is still dead, and the fix</span><em>26</em></li>
@@ -378,7 +381,7 @@ cp -r nito-skill/skills/nito-accounting ~/.claude/skills/</pre><button type="but
 <footer class="section section--alt">
   <div class="section-content">
     <p><a href="https://github.com/Riverroll/nito-skill">github.com/Riverroll/nito-skill</a> · MIT licence</p>
-    <p>The ledger's company, customers, suppliers and amounts are examples. The Ridge page's product is fiction; its photographs are public-domain USGS and NPS frames, credited on that page. Tax rates in nito-accounting are dated and marked for re-checking. It is a guide for building software, not tax advice.</p>
+    <p>The ledger's company, customers, suppliers, bank accounts and amounts are examples. Tax rates in nito-accounting are dated and marked for re-checking. It is a guide for building software, not tax advice.</p>
   </div>
 </footer>
 

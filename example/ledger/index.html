@@ -204,22 +204,31 @@ document.documentElement.lang = "id";
 
 // ---------------------------------------------------------------- config
 const USERS = { rina: "Rina", budi: "Budi" };
-const JOURNALS = { PJ: "Penjualan", PB: "Pembelian", KM: "Kas masuk", KK: "Kas keluar", JU: "Umum" };
+// Journals for documents. Each cash or bank account is a journal of its own
+// (state.cashbanks), so receipts and payments are numbered per account.
+const JOURNALS = { PJ: "Penjualan", PB: "Pembelian", JU: "Umum" };
 const KINDS = {
   sale:             { label: "Penjualan barang", journal: "PJ", prefix: "INV" },
   service:          { label: "Penjualan jasa", journal: "PJ", prefix: "INV" },
-  receipt:          { label: "Penerimaan", journal: "KM", prefix: "RCV" },
+  receipt:          { label: "Penerimaan", journal: "cash", prefix: "RCV" },
   purchase:         { label: "Pembelian barang", journal: "PB", prefix: "BILL" },
   purchase_service: { label: "Pembelian jasa", journal: "PB", prefix: "BILL" },
   asset:            { label: "Pembelian aset tetap", journal: "PB", prefix: "BILL" },
-  payment:          { label: "Pembayaran", journal: "KK", prefix: "PAY" },
+  payment:          { label: "Pembayaran", journal: "cash", prefix: "PAY" },
+  transfer:         { label: "Transfer kas/bank", journal: "cash", prefix: "TRF" },
+  cash_in:          { label: "Kas masuk lain", journal: "cash", prefix: "BKM" },
+  cash_out:         { label: "Kas keluar lain", journal: "cash", prefix: "BKK" },
   ppn_settlement:   { label: "Kompensasi PPN", journal: "JU", prefix: "PPN" },
-  tax_payment:      { label: "Setoran pajak", journal: "KK", prefix: "SSP" },
+  tax_payment:      { label: "Setoran pajak", journal: "cash", prefix: "SSP" },
   depreciation:     { label: "Penyusutan", journal: "JU", prefix: "DEP" },
 };
+const METHODS = { transfer: "Transfer bank", cash: "Tunai", giro: "Cek / giro" };
 const AR_KINDS = ["sale", "service"], AP_KINDS = ["purchase", "purchase_service", "asset"];
-// The company adapts the skill's template: five accounts the template does not carry.
+// The company adapts the skill's template: accounts the template does not carry.
 const EXTRA_ACCOUNTS = [
+  { code: "1-1210", name: "Bank Mandiri", type: "asset", normal_balance: "debit" },
+  { code: "6-3000", name: "Beban Administrasi Bank", type: "expense", normal_balance: "debit" },
+  { code: "7-1000", name: "Pendapatan Bunga Bank", type: "temporary", normal_balance: "credit" },
   { code: "1-1750", name: "PPN Lebih Bayar", type: "asset", normal_balance: "debit" },
   { code: "2-1150", name: "Barang Diterima Belum Ditagih (GR/IR)", type: "liability", normal_balance: "credit" },
   { code: "2-1410", name: "Utang PPN", type: "liability", normal_balance: "credit" },
@@ -228,7 +237,8 @@ const EXTRA_ACCOUNTS = [
 ];
 // Account determination: role key -> account. The engine never reads a code.
 const ROLES = {
-  bank: ["Bank", "1-1200"], receivable: ["Piutang usaha", "1-1300"], payable: ["Utang usaha", "2-1100"],
+  bank: ["Kas/bank bawaan", "1-1200"], bank_charges: ["Biaya bank", "6-3000"],
+  receivable: ["Piutang usaha", "1-1300"], payable: ["Utang usaha", "2-1100"],
   sales: ["Penjualan barang", "4-1000"], service_revenue: ["Pendapatan jasa", "4-2000"],
   tax_output_ppn: ["PPN Keluaran", "2-1400"], tax_input_ppn: ["PPN Masukan", "1-1700"],
   ppn_payable: ["Utang PPN", "2-1410"], ppn_receivable: ["PPN Lebih Bayar", "1-1750"],
@@ -266,6 +276,9 @@ const role = (r) => state.defaults[r];
 const acct = (code) => state.accounts[code];
 const aname = (code) => (acct(code) ? `${code} ${acct(code).name}` : code);
 const party = (id) => [...state.customers, ...state.suppliers].find((p) => p.id === id)?.name ?? "";
+const cbOf = (id) => state.cashbanks.find((c) => c.id === id);
+const jname = (code) => JOURNALS[code] ?? cbOf(code)?.name ?? code;
+const cbBal = (c, to) => bal(c.account, to);
 class FieldErr extends Error { constructor(field, msg) { super(msg); this.field = field; } }
 
 function money(raw, field, { zero = false } = {}) {
@@ -292,11 +305,19 @@ function fresh() {
   for (const a of [...coa.accounts, ...EXTRA_ACCOUNTS])
     accounts[a.code] = { code: a.code, name: a.name, type: a.type, normal_balance: a.normal_balance,
       control: a.control ?? null, closing_only: !!a.zero_outside_closing, active: true, postable: true };
+  accounts["1-1200"].name = "Bank BCA";
   const periods = {};
   for (let m = 1; m <= 12; m++) periods[`2026-${String(m).padStart(2, "0")}`] = "open";
-  return { v: 1, company: { name: "PT Contoh Niaga Nusantara", pkp: true, fiscal_year: 2026, term_days: 30 },
+  return { v: 2, company: { name: "PT Contoh Niaga Nusantara", pkp: true, fiscal_year: 2026, term_days: 30 },
     user: "rina", accounts, defaults: Object.fromEntries(Object.entries(ROLES).map(([k, [, c]]) => [k, c])),
     periods, seq: {}, entries: [], docs: [], tax: TAX.map((t) => ({ ...t })),
+    // payment journals: one per cash or bank account; numbers are examples
+    cashbanks: [
+      { id: "BCA", name: "Bank BCA", account: "1-1200", kind: "bank", number: "0123 456 789" },
+      { id: "MDR", name: "Bank Mandiri", account: "1-1210", kind: "bank", number: "130 00 1234567 8" },
+      { id: "KAS", name: "Kas kecil", account: "1-1100", kind: "cash", number: "" },
+    ],
+    recon: {}, statements: {},
     customers: [{ id: "C1", name: "CV Mitra Sejahtera" }, { id: "C2", name: "PT Andalas Logistik" }, { id: "C3", name: "Toko Sinar Jaya" }],
     suppliers: [{ id: "S1", name: "PT Sumber Makmur" }, { id: "S2", name: "KAP Rekan dan Mitra" }, { id: "S3", name: "PT Teknik Prima" }] };
 }
@@ -332,9 +353,9 @@ function postEntry(entry, journal) {
   if (i >= 0) state.entries[i] = posted; else state.entries.push(posted);
   return { ok: true, entry: posted };
 }
-function postEvent(event_type, amounts, head) {
+function postEvent(event_type, amounts, head, defaults = state.defaults) {
   const clean = Object.fromEntries(Object.entries(amounts).filter(([, v]) => v && M(v) > 0n));
-  const b = core.buildEntry({ event_type, amounts: clean, ...head }, state.defaults);
+  const b = core.buildEntry({ event_type, amounts: clean, ...head }, defaults);
   if (!b.ok) return b;
   for (const l of b.entry.lines) {
     const c = acct(l.account)?.control;
@@ -343,16 +364,26 @@ function postEvent(event_type, amounts, head) {
   return postEntry(b.entry, head.journal);
 }
 // A module document: number it, post its events, keep the journal numbers on it.
+// A cash document posts in the journal of the cash or bank account it names,
+// and that account fills the "bank" role: the user picked the journal, the
+// module never names an account.
 function makeDoc(kind, fields, postings) {
   const prev = fields.token && state.docs.find((d) => d.token === fields.token && d.status === "open");
   if (prev) return { ok: true, doc: prev, flash: `${prev.no} sudah diposting sebelumnya. Kirim ulang tidak membuat jurnal kedua.` };
   const k = KINDS[kind], no = nextNo(k.prefix, fields.date);
+  let journal = k.journal, defaults = state.defaults;
+  if (journal === "cash") {
+    const cb = cbOf(fields.cb);
+    if (!cb) return { ok: false, errors: ["Pilih kas atau bank"], field: "cb" };
+    journal = cb.id; defaults = { ...state.defaults, bank: cb.account };
+  }
   const doc = { kind, no, status: "open", entries: [], ...fields };
   const who = fields.party ? ` · ${party(fields.party)}` : "";
-  for (const [ev, amounts, suffix] of postings(doc)) {
+  for (const [ev, amounts, suffix, extra] of postings(doc)) {
     const r = postEvent(ev, amounts, { idempotency_key: `${no}:${suffix}`, source_type: kind, source_id: no,
-      posting_date: fields.date, document_date: fields.date, created_by: state.user, journal: k.journal,
-      party: fields.party ?? undefined, description: `${k.label} ${no}${who}${fields.memo ? " · " + fields.memo : ""}` });
+      posting_date: fields.date, document_date: fields.date, created_by: state.user, journal,
+      party: fields.party ?? undefined, description: `${k.label} ${no}${who}${fields.memo ? " · " + fields.memo : ""}` },
+      extra ? { ...defaults, ...extra } : defaults);
     if (!r.ok) return r;
     doc.entries.push(r.entry.entry_number);
   }
@@ -505,11 +536,51 @@ function settle(f, kind) {
   if (withhold && state.docs.some((x) => x.status === "open" && x.ref === d.no && M(x.pph) > 0n)) throw new FieldErr("pph23", "PPh 23 faktur ini sudah dipotong");
   const pph = withhold ? taxAmt("PPh 23", d.dpp, date) : "0.00";
   const bank = money(f.bank, "bank");
-  const amt = M(bank) + M(pph);
-  if (amt > openAmt(d)) throw new FieldErr("bank", `Melebihi sisa ${txt(openAmt(d))}`);
-  return tx(() => makeDoc(kind, { token: f.token, date, party: d.party, ref: d.no, bank, pph, amount: S(amt) }, () => [isR
-    ? ["receipt_in", { bank, prepaid_tax_22_23_25: pph, receivable: S(amt) }, "post"]
-    : ["payment_out", { payable: S(amt), bank, wht_payable_23: pph }, "post"]]));
+  const charges = f.charges ? money(f.charges, "charges", { zero: true }) : "0.00";
+  if (!cbOf(f.cb)) throw new FieldErr("cb", "Pilih kas atau bank");
+  if (!METHODS[f.method]) throw new FieldErr("method", "Pilih metode");
+  // A receipt: the customer's payment covers what lands in the bank, the PPh 23
+  // they cut and any fee the bank took. A payment: the invoice is settled by
+  // what leaves the bank plus the PPh 23 withheld; a fee comes on top.
+  const amt = isR ? M(bank) + M(pph) + M(charges) : M(bank) + M(pph) - M(charges);
+  if (amt <= 0n) throw new FieldErr("bank", "Jumlah yang dilunasi harus lebih dari nol");
+  if (amt > openAmt(d)) throw new FieldErr("bank", `Melunasi ${txt(amt)}, melebihi sisa ${txt(openAmt(d))}`);
+  const fields = { token: f.token, date, party: d.party, ref: d.no, cb: f.cb, method: f.method,
+    ref_no: (f.ref_no ?? "").trim(), bank, pph, charges, amount: S(amt), memo: (f.ref_no ?? "").trim() };
+  return tx(() => makeDoc(kind, fields, () => [isR
+    ? ["receipt_in", { bank, prepaid_tax_22_23_25: pph, bank_charges: charges, receivable: S(amt) }, "post"]
+    : ["payment_out", { payable: S(amt), bank_charges: charges, bank, wht_payable_23: pph }, "post"]]));
+}
+function transfer(f) {
+  const date = dateField(f.date), from = cbOf(f.from), to = cbOf(f.to), amount = money(f.amount, "amount");
+  if (!from) throw new FieldErr("from", "Pilih rekening asal");
+  if (!to || to === from) throw new FieldErr("to", "Pilih rekening tujuan yang lain");
+  return tx(() => makeDoc("transfer", { token: f.token, date, cb: from.id, to: to.id, amount, memo: `${from.name} ke ${to.name}` },
+    () => [["cash_transfer", { bank_in: amount, bank_out: amount }, "post", { bank_in: to.account, bank_out: from.account }]]));
+}
+function cashOther(f) {
+  const date = dateField(f.date), amount = money(f.amount, "amount"), a = acct(f.account);
+  if (!cbOf(f.cb)) throw new FieldErr("cb", "Pilih kas atau bank");
+  // the counterpart of a statement line may not be a control account or
+  // another cash account: those move only through their own documents
+  if (!a || !a.active || a.control || state.cashbanks.some((c) => c.account === a.code)) throw new FieldErr("account", "Pilih akun pendapatan, beban atau akun lain non-kontrol");
+  const memo = (f.memo ?? "").trim();
+  if (!memo) throw new FieldErr("memo", "Isi keterangan");
+  const kind = f.dir === "in" ? "cash_in" : "cash_out";
+  return tx(() => makeDoc(kind, { token: f.token, date, cb: f.cb, account: a.code, amount, memo }, () =>
+    [[kind === "cash_in" ? "cash_receipt_other" : "cash_payment_other", { bank: amount, counterpart: amount }, "post", { counterpart: a.code }]]));
+}
+// Reconciliation marks a bank line as matched to the statement. It is a record
+// beside the ledger, like Odoo's reconciliation lines: the posted entry itself
+// is never touched.
+function toggleCleared(key) {
+  tx(() => { if (state.recon[key]) delete state.recon[key]; else state.recon[key] = today(); return { ok: true }; });
+}
+function saveStatement(f) {
+  const c = cbOf(f.cb);
+  if (!c) throw new FieldErr("cb", "Pilih rekening");
+  const date = dateField(f.date), balance = money(f.balance, "balance", { zero: true });
+  return tx(() => { state.statements[c.id] = { date, balance }; return { ok: true, flash: `Saldo rekening koran ${c.name} per ${dfmt(date)} disimpan.` }; });
 }
 function runDepreciation(f) {
   const month = f.month;
@@ -553,7 +624,7 @@ function payTax(f) {
     const ppn = -bal(role("ppn_payable"), date), pph = -bal(role("wht_payable_23"), date);
     const p1 = ppn > 0n ? ppn : 0n, p2 = pph > 0n ? pph : 0n;
     if (!p1 && !p2) return { ok: false, errors: [`Tidak ada Utang PPN atau PPh 23 per ${dfmt(date)}`] };
-    return makeDoc("tax_payment", { token: f.token, date, ppn: S(p1), pph: S(p2), amount: S(p1 + p2) }, () =>
+    return makeDoc("tax_payment", { token: f.token, date, cb: f.cb, ppn: S(p1), pph: S(p2), amount: S(p1 + p2) }, () =>
       [["tax_payment", { ppn_payable: S(p1), wht_payable_23: S(p2), bank: S(p1 + p2) }, "post"]]);
   });
 }
@@ -641,6 +712,7 @@ const H = {
   sale: submitSale, purchase: submitPurchase, asset: submitAsset,
   receipt: (f) => settle(f, "receipt"), payment: (f) => settle(f, "payment"),
   depreciation: runDepreciation, ppn: settlePPN, taxpay: payTax,
+  transfer, cashother: cashOther, statement: saveStatement,
   manual: saveManual, approve, reverse: reverseManual, cancel: cancelDoc,
   account: addAccount, defaults: saveDefaults, company: saveCompany,
   reset: () => { state = seed(); return { ok: true, flash: "Data contoh dimuat ulang." }; },
@@ -654,18 +726,25 @@ function seed() {
   const cap = run(saveManual, { date: "2026-01-02", memo: "Setoran modal pemegang saham",
     acct_0: "1-1200", dr_0: "500.000.000", cr_0: "", acct_1: "3-1000", dr_1: "", cr_1: "500.000.000" });
   run(approve, { key: cap.key }, "budi");
+  run(transfer, { date: "2026-01-03", from: "BCA", to: "MDR", amount: "100.000.000" });
+  run(transfer, { date: "2026-01-06", from: "BCA", to: "KAS", amount: "5.000.000" });
   const p1 = run(submitPurchase, { kind: "purchase", party: "S1", date: "2026-01-05", dpp: "80.000.000", pkp: "on", memo: "Bahan kemasan" });
   run(submitSale, { kind: "sale", party: "C1", date: "2026-01-10", dpp: "95.000.000", cost: "60.000.000", memo: "Diskon dagang 5% sudah dipotong" });
   const a2 = run(submitSale, { kind: "service", party: "C2", date: "2026-01-12", dpp: "50.000.000", memo: "Jasa pengemasan" });
   const p2 = run(submitPurchase, { kind: "purchase_service", party: "S2", date: "2026-01-15", dpp: "40.000.000", pkp: "on", memo: "Jasa konsultan" });
   run(submitAsset, { party: "S3", date: "2026-01-20", name: "Mesin pengemas otomatis", dpp: "128.000.000", pkp: "on", residual: "8.000.000", months: "60" });
-  run(H.receipt, { ref: a2.doc.no, date: "2026-01-25", pph23: "on", bank: "54.500.000" });
-  run(H.payment, { ref: p1.doc.no, date: "2026-01-28", bank: "88.800.000" });
-  run(H.payment, { ref: p2.doc.no, date: "2026-01-30", pph23: "on", bank: "43.600.000" });
+  run(H.receipt, { ref: a2.doc.no, date: "2026-01-25", cb: "BCA", method: "transfer", ref_no: "TRF 2501-ANDL", pph23: "on", bank: "54.500.000" });
+  run(H.payment, { ref: p1.doc.no, date: "2026-01-28", cb: "MDR", method: "transfer", ref_no: "MDR-OUT-0128", bank: "88.800.000" });
+  run(H.payment, { ref: p2.doc.no, date: "2026-01-30", cb: "BCA", method: "transfer", ref_no: "BCA-OUT-0130", pph23: "on", bank: "43.600.000" });
+  run(cashOther, { date: "2026-01-31", cb: "MDR", dir: "in", account: "7-1000", amount: "250.000", memo: "Bunga jasa giro Januari" });
+  run(cashOther, { date: "2026-01-31", cb: "MDR", dir: "out", account: "6-3000", amount: "150.000", memo: "Biaya administrasi Januari" });
   run(runDepreciation, { month: "2026-01" });
   run(settlePPN, { month: "2026-01" });
-  run(payTax, { date: "2026-02-10" });
+  run(payTax, { date: "2026-02-10", cb: "BCA" });
   run(submitSale, { kind: "service", party: "C3", date: "2026-02-14", dpp: "12.500.000", memo: "Jasa desain kemasan" });
+  // January's BCA statement, every line matched: the reconciliation shows a difference of zero
+  for (const e of live()) e.lines.forEach((l, i) => { if (l.account === "1-1200" && e.posting_date <= "2026-01-31") state.recon[`${e.entry_number}#${i}`] = "2026-02-02"; });
+  state.statements.BCA = { date: "2026-01-31", balance: S(bal("1-1200", "2026-01-31")) };
   state.user = "rina";
   save();
   return state;
@@ -731,7 +810,7 @@ function entryHead(e) {
   return `<dl>
     <dt>Status</dt><dd>${entryBadge(e)}</dd>
     <dt>Tanggal</dt><dd>${dfmt(e.posting_date)}</dd>
-    <dt>Jurnal</dt><dd>${JOURNALS[e.journal]}</dd>
+    <dt>Jurnal</dt><dd>${jname(e.journal)}</dd>
     <dt>Keterangan</dt><dd>${esc(e.description)}</dd>
     <dt>Sumber</dt><dd>${e.source_type ? `${esc(KINDS[e.source_type]?.label ?? e.source_type)} ${esc(e.source_id)}` : "Jurnal manual"}</dd>
     <dt>Dibuat</dt><dd>${USERS[e.created_by] ?? esc(e.created_by)}</dd>
@@ -766,14 +845,18 @@ function inspector() {
     <dt>Tanggal</dt><dd>${dfmt(d.date)}${d.due ? ` · jatuh tempo ${dfmt(d.due)}` : ""}</dd>
     ${d.party ? `<dt>Pihak</dt><dd>${esc(party(d.party))}</dd>` : ""}
     ${d.ref ? `<dt>Untuk</dt><dd>${esc(d.ref)}</dd>` : ""}
-    ${d.memo ? `<dt>Catatan</dt><dd>${esc(d.memo)}</dd>` : ""}
-    ${money2("dpp", "DPP")}${money2("ppn", "PPN")}${money2("total", "Total")}${money2("pph", "PPh 23")}${money2("bank", "Bank")}${money2("amount", "Jumlah")}
+    ${d.cb ? `<dt>Kas/bank</dt><dd>${esc(cbOf(d.cb)?.name)}${d.to ? ` ke ${esc(cbOf(d.to)?.name)}` : ""}</dd>` : ""}
+    ${d.method ? `<dt>Metode</dt><dd>${METHODS[d.method]}${d.ref_no ? ` · ${esc(d.ref_no)}` : ""}</dd>` : ""}
+    ${d.memo && !d.ref_no ? `<dt>Catatan</dt><dd>${esc(d.memo)}</dd>` : ""}
+    ${money2("dpp", "DPP")}${money2("ppn", "PPN")}${money2("total", "Total")}${money2("pph", "PPh 23")}${money2("charges", "Biaya bank")}${money2("bank", "Lewat rekening")}${money2("amount", "Jumlah")}
     ${AR_KINDS.includes(d.kind) || AP_KINDS.includes(d.kind) ? `<dt>Sisa</dt><dd>${txt(openAmt(d))}</dd>` : ""}</dl>`;
+  const owed = (AR_KINDS.includes(d.kind) || AP_KINDS.includes(d.kind)) && d.status === "open" && openAmt(d) > 0n;
+  const pay = owed ? `<div class="actions"><button class="btn" type="button" data-act="pay" data-id="${esc(d.no)}">${AR_KINDS.includes(d.kind) ? "Catat penerimaan" : "Catat pembayaran"}</button></div>` : "";
   const act = d.status === "open"
     ? form("cancel", "", `<input type="hidden" name="no" value="${esc(d.no)}">${fld("cancel", "date", "Tanggal pembatalan", dateIn("cancel", "date", d.date), "Jurnal pembalik diposting pada tanggal ini.")}`, "Batalkan dokumen", { confirm: "Klik lagi untuk membatalkan" })
     : "";
-  const blocks = [...entries, ...reversals].map((e) => `<div class="block"><h3><a href="#jurnal" data-goto="${esc(e.idempotency_key)}">${esc(e.entry_number)}</a> · ${JOURNALS[e.journal]} · ${dfmt(e.posting_date)}</h3>${linesTable(e)}</div>`).join("");
-  return `<section class="panel"><div class="panel-head"><h2>${esc(d.no)}</h2>${close}</div>${head}${blocks}</section>${act}`;
+  const blocks = [...entries, ...reversals].map((e) => `<div class="block"><h3><a href="#jurnal" data-goto="${esc(e.idempotency_key)}">${esc(e.entry_number)}</a> · ${jname(e.journal)} · ${dfmt(e.posting_date)}</h3>${linesTable(e)}</div>`).join("");
+  return `<section class="panel"><div class="panel-head"><h2>${esc(d.no)}</h2>${close}</div>${head}${pay}${blocks}</section>${act}`;
 }
 function split(main, side) {
   const fl = flashHtml(), s = ui.sel ? inspector() : side;
@@ -792,15 +875,15 @@ function docTable(list, who) {
 }
 function settleTable(kind) {
   const list = state.docs.filter((d) => d.kind === kind).reverse();
-  return table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Faktur" }, { h: "Jumlah (Rp)", num: true }, { h: "PPh 23 (Rp)", num: true }, { h: "Status" }],
-    list.map((d) => ({ attr: selAttr("doc", d.no), cells: [`<span class="id">${esc(d.no)}</span>`, dfmt(d.date), esc(d.ref), txt(M(d.amount)), txt(M(d.pph)), docBadge(d)] })),
+  return table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Faktur" }, { h: "Kas/bank" }, { h: "Melunasi (Rp)", num: true }, { h: "Status" }],
+    list.map((d) => ({ attr: selAttr("doc", d.no), cells: [`<span class="id">${esc(d.no)}</span>`, dfmt(d.date), esc(d.ref), esc(cbOf(d.cb)?.name ?? ""), txt(M(d.amount)), docBadge(d)] })),
     { empty: "Belum ada." });
 }
 
 // ---------------------------------------------------------------- views
 function vDash() {
   const b = bs(fyEnd());
-  const kp = [["Saldo bank", bal(role("bank"))], ["Piutang usaha", bal(role("receivable"))], ["Utang usaha", -bal(role("payable"))], [`Laba ${state.company.fiscal_year}`, b.profit]];
+  const kp = [["Kas dan bank", state.cashbanks.reduce((s, c) => s + cbBal(c), 0n)], ["Piutang usaha", bal(role("receivable"))], ["Utang usaha", -bal(role("payable"))], [`Laba ${state.company.fiscal_year}`, b.profit]];
   const cs = checks();
   const recent = sorted(state.entries.filter((e) => e.status !== "draft")).slice(-8).reverse();
   const drafts = state.entries.filter((e) => e.status === "draft");
@@ -818,8 +901,24 @@ function vDash() {
 function entriesTable(list, selectable = true) {
   return table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Jurnal" }, { h: "Keterangan", cls: "trunc" }, { h: "Jumlah (Rp)", num: true }, { h: "Status" }],
     list.map((e) => ({ attr: selectable ? selAttr("entry", e.idempotency_key) : "", cells: [
-      `<span class="id">${esc(e.entry_number ?? "Draf")}</span>`, dfmt(e.posting_date), JOURNALS[e.journal], esc(e.description),
+      `<span class="id">${esc(e.entry_number ?? "Draf")}</span>`, dfmt(e.posting_date), jname(e.journal), esc(e.description),
       txt(e.lines.reduce((s, l) => s + M(l.debit), 0n)), entryBadge(e)] })), { empty: "Tidak ada jurnal yang cocok dengan saringan ini." });
+}
+// Register payment, as on an invoice in Odoo: which invoice, which cash or bank
+// journal, how it was paid, the bank's reference, the amount, tax cut, fee.
+const cbOpts = () => state.cashbanks.map((c) => [c.id, c.name]);
+function payForm(kind, open) {
+  const r = kind === "receipt";
+  const pick = open.find((d) => d.no === ui.payFor)?.no ?? open[0]?.no;
+  ui.payFor = null;
+  return form(kind, r ? "Terima pembayaran" : "Bayar pemasok", open.length ? `
+      ${fld(kind, "ref", "Faktur", sel(kind, "ref", open.map((d) => [d.no, `${d.no} · ${party(d.party)}`]), pick))}
+      <div class="row2">${fld(kind, "cb", r ? "Masuk ke" : "Keluar dari", sel(kind, "cb", cbOpts(), "BCA"))}${fld(kind, "method", "Metode", sel(kind, "method", Object.entries(METHODS), "transfer"))}</div>
+      <div class="row2">${fld(kind, "date", "Tanggal", dateIn(kind))}${fld(kind, "ref_no", "No. referensi", inp(kind, "ref_no", "", 'placeholder="No. bukti / cek"'))}</div>
+      ${check(kind, "pph23", r ? "Pelanggan memotong PPh 23" : "Potong PPh 23", false)}
+      ${fld(kind, "charges", "Biaya bank (Rp)", amount(kind, "charges"), r ? "Dipotong bank dari uang yang masuk." : "Biaya transfer, dibayar di atas tagihan.")}
+      ${fld(kind, "bank", r ? "Diterima di rekening (Rp) *" : "Keluar dari rekening (Rp) *", amount(kind, "bank"))}`
+    : `<p class="meta">${r ? "Semua faktur sudah lunas." : "Tidak ada utang terbuka."}</p>`, r ? "Catat penerimaan" : "Catat pembayaran");
 }
 function vSales() {
   const open = arDocs().filter((d) => d.status === "open" && openAmt(d) > 0n);
@@ -830,11 +929,7 @@ function vSales() {
       <div class="row2">${fld("sale", "date", "Tanggal", dateIn("sale"))}${fld("sale", "dpp", "DPP (Rp) *", amount("sale", "dpp"), state.company.pkp ? "PPN dihitung dari parameter pajak." : "Perusahaan bukan PKP: tanpa PPN.")}</div>
       ${fld("sale", "cost", "Harga pokok barang (Rp)", amount("sale", "cost"), "Untuk barang: membentuk jurnal HPP dan persediaan.")}
       ${fld("sale", "memo", "Catatan", inp("sale", "memo"))}`, "Posting faktur")
-    + form("receipt", "Terima pembayaran", open.length ? `
-      ${fld("receipt", "ref", "Faktur", sel("receipt", "ref", open.map((d) => [d.no, `${d.no} · ${party(d.party)}`]), open[0].no))}
-      ${fld("receipt", "date", "Tanggal", dateIn("receipt"))}
-      ${check("receipt", "pph23", "Pelanggan memotong PPh 23", false)}
-      ${fld("receipt", "bank", "Diterima di bank (Rp) *", amount("receipt", "bank"))}` : `<p class="meta">Semua faktur sudah lunas.</p>`, "Posting penerimaan");
+    + payForm("receipt", open);
   return { sub: `Piutang terbuka ${txt(sumOpen(arDocs()))}`, body: split(
     block("Faktur penjualan", docTable(arDocs(), "Pelanggan")) + block("Penerimaan", settleTable("receipt")), side) };
 }
@@ -847,11 +942,7 @@ function vPurch() {
       <div class="row2">${fld("purchase", "date", "Tanggal", dateIn("purchase"))}${fld("purchase", "dpp", "DPP (Rp) *", amount("purchase", "dpp"))}</div>
       ${check("purchase", "pkp", "Ada Faktur Pajak dari pemasok PKP")}
       ${fld("purchase", "memo", "Catatan", inp("purchase", "memo"))}`, "Posting faktur")
-    + form("payment", "Bayar pemasok", open.length ? `
-      ${fld("payment", "ref", "Faktur", sel("payment", "ref", open.map((d) => [d.no, `${d.no} · ${party(d.party)}`]), open[0].no))}
-      ${fld("payment", "date", "Tanggal", dateIn("payment"))}
-      ${check("payment", "pph23", "Potong PPh 23", false)}
-      ${fld("payment", "bank", "Dibayar dari bank (Rp) *", amount("payment", "bank"))}` : `<p class="meta">Tidak ada utang terbuka.</p>`, "Posting pembayaran");
+    + payForm("payment", open);
   return { sub: `Utang terbuka ${txt(sumOpen(apDocs()))}`, body: split(
     block("Faktur pembelian", docTable(apDocs(), "Pemasok")) + block("Pembayaran", settleTable("payment")), side) };
 }
@@ -875,13 +966,72 @@ function vAssets() {
     + block("Jurnal penyusutan", table([{ h: "Nomor" }, { h: "Bulan" }, { h: "Aset", cls: "trunc" }, { h: "Jumlah (Rp)", num: true }, { h: "Status" }],
       deps.map((d) => ({ attr: selAttr("doc", d.no), cells: [`<span class="id">${esc(d.no)}</span>`, d.month, esc(d.memo), txt(M(d.amount)), docBadge(d)] })), { empty: "Belum ada penyusutan." })), side) };
 }
+// Every line on one cash or bank account, oldest first, with the key the
+// reconciliation record uses.
+function cashLines(c) {
+  const out = [];
+  for (const e of sorted(live())) e.lines.forEach((l, i) => { if (l.account === c.account) out.push({ key: `${e.entry_number}#${i}`, e, in: M(l.debit), out: M(l.credit) }); });
+  return out;
+}
+function vCash() {
+  const c = cbOf(ui.f.cbsel) ?? state.cashbanks[0];
+  const accts = state.cashbanks.map((x) => {
+    const pending = cashLines(x).filter((l) => !state.recon[l.key]).length;
+    const on = x.id === c.id ? ' aria-selected="true"' : "";
+    return { attr: ` data-act="cb" data-id="${x.id}" tabindex="0"${on}`, cells: [`<span class="id">${esc(x.name)}</span>`, esc(x.number || "Tunai"), String(pending), fmt(cbBal(x))] };
+  });
+  const total = state.cashbanks.reduce((s, x) => s + cbBal(x), 0n);
+  let run = 0n;
+  const lines = cashLines(c).map((l) => {
+    run += l.in - l.out;
+    const on = !!state.recon[l.key];
+    return { cells: [
+      `<label class="check" for="rc-${esc(l.key)}"><input type="checkbox" id="rc-${esc(l.key)}" data-act="clear" data-id="${esc(l.key)}" aria-label="${esc(l.e.entry_number)} cocok dengan rekening koran"${on ? " checked" : ""}><span class="box" aria-hidden="true"></span></label>`,
+      dfmt(l.e.posting_date), `<span class="id">${esc(l.e.entry_number)}</span>`, esc(l.e.description), fmt(l.in - l.out), fmt(run)] };
+  }).reverse();
+  // the bank reconciliation of C1: statement balance against the matched lines
+  const st = state.statements[c.id];
+  let recon = `<p class="meta">Isi saldo rekening koran di samping, lalu centang baris yang sudah muncul di rekening koran.</p>`;
+  if (st) {
+    const upto = cashLines(c).filter((l) => l.e.posting_date <= st.date);
+    const cleared = upto.filter((l) => state.recon[l.key]).reduce((s, l) => s + l.in - l.out, 0n);
+    const transit = upto.filter((l) => !state.recon[l.key]).reduce((s, l) => s + l.in, 0n);
+    const outstanding = upto.filter((l) => !state.recon[l.key]).reduce((s, l) => s + l.out, 0n);
+    const book = cbBal(c, st.date), diff = M(st.balance) - cleared;
+    recon = `<dl>
+      <dt>Rekening koran per ${dfmt(st.date)}</dt><dd>${txt(M(st.balance))}</dd>
+      <dt>Baris yang sudah cocok</dt><dd>${fmt(cleared)}</dd>
+      <dt>Selisih</dt><dd>${diff === 0n ? badge("success", "Nol, cocok") : badge("critical", txt(diff))}</dd>
+      <dt>Setoran dalam perjalanan</dt><dd>${txt(transit)}</dd>
+      <dt>Pembayaran belum dicairkan</dt><dd>${txt(outstanding)}</dd>
+      <dt>Saldo buku per tanggal itu</dt><dd>${txt(book)} = rekening koran + dalam perjalanan − belum dicairkan${M(st.balance) + transit - outstanding === book ? "" : " (tidak sama: cek baris yang dicentang)"}</dd></dl>`;
+  }
+  const others = Object.values(state.accounts).filter((a) => a.active && a.postable && !a.control && !state.cashbanks.some((x) => x.account === a.code))
+    .sort((a, b) => a.code.localeCompare(b.code)).map((a) => [a.code, `${a.code} ${a.name}`]);
+  const side = form("transfer", "Transfer antar rekening", `
+      <div class="row2">${fld("transfer", "from", "Dari", sel("transfer", "from", cbOpts(), "BCA"))}${fld("transfer", "to", "Ke", sel("transfer", "to", cbOpts(), "KAS"))}</div>
+      <div class="row2">${fld("transfer", "date", "Tanggal", dateIn("transfer"))}${fld("transfer", "amount", "Jumlah (Rp) *", amount("transfer", "amount"))}</div>`, "Posting transfer")
+    + form("cashother", "Kas masuk atau keluar lain", `
+      <div class="row2">${fld("cashother", "cb", "Kas/bank", sel("cashother", "cb", cbOpts(), c.id))}${fld("cashother", "dir", "Arah", sel("cashother", "dir", [["out", "Keluar"], ["in", "Masuk"]], "out"))}</div>
+      ${fld("cashother", "account", "Akun lawan", sel("cashother", "account", others, "6-3000"), "Bunga, biaya bank, beban kecil. Piutang dan utang lewat faktur.")}
+      <div class="row2">${fld("cashother", "date", "Tanggal", dateIn("cashother"))}${fld("cashother", "amount", "Jumlah (Rp) *", amount("cashother", "amount"))}</div>
+      ${fld("cashother", "memo", "Keterangan *", inp("cashother", "memo"))}`, "Posting")
+    + form("statement", `Rekening koran ${esc(c.name)}`, `<input type="hidden" name="cb" value="${c.id}">
+      <div class="row2">${fld("statement", "date", "Per tanggal", dateIn("statement", "date", st?.date ?? defDate()))}${fld("statement", "balance", "Saldo (Rp)", amount("statement", "balance", st ? txt(M(st.balance)) : ""))}</div>`, "Simpan saldo");
+  return { sub: `Total kas dan bank ${txt(total)} · setiap rekening punya jurnal dan nomor sendiri`, body: split(
+    block("Rekening", table([{ h: "Kas/bank" }, { h: "No. rekening" }, { h: "Belum cocok", num: true }, { h: "Saldo buku (Rp)", num: true }], accts, { foot: ["Jumlah", "", "", fmt(total)] }))
+    + block(`Rekonsiliasi ${esc(c.name)}`, recon)
+    + block(`Mutasi ${esc(c.name)}`, table([{ h: "Cocok" }, { h: "Tanggal" }, { h: "Nomor" }, { h: "Keterangan", cls: "trunc" }, { h: "Mutasi (Rp)", num: true }, { h: "Saldo (Rp)", num: true }], lines, { empty: "Belum ada mutasi." })),
+    side) };
+}
 function vTax() {
   const r = (k) => acct(role(k));
   const rows = ["tax_output_ppn", "tax_input_ppn", "ppn_receivable", "ppn_payable", "prepaid_tax_22_23_25", "wht_payable_23"].filter((k) => r(k))
     .map((k) => ({ cells: [ROLES[k][0], esc(aname(role(k))), txt(natural(r(k), bal(role(k))))] }));
   const docs = state.docs.filter((d) => d.kind === "ppn_settlement" || d.kind === "tax_payment").reverse();
   const side = form("ppn", "Kompensasi PPN", fld("ppn", "month", "Masa pajak", monthIn("ppn"), "Saldo PPN Keluaran dikurangi PPN Masukan sampai akhir masa."), "Posting kompensasi")
-    + form("taxpay", "Setor pajak", fld("taxpay", "date", "Tanggal setor", dateIn("taxpay"), "Menyetor seluruh Utang PPN dan Utang PPh 23 per tanggal ini."), "Posting setoran");
+    + form("taxpay", "Setor pajak", `<div class="row2">${fld("taxpay", "date", "Tanggal setor", dateIn("taxpay"))}${fld("taxpay", "cb", "Dari", sel("taxpay", "cb", cbOpts(), "BCA"))}</div>
+      <p class="meta">Menyetor seluruh Utang PPN dan Utang PPh 23 per tanggal ini.</p>`, "Posting setoran");
   return { sub: "PPN dan PPh 23. Tarif dari parameter berlaku-tanggal di Konfigurasi.", body: split(
     block("Saldo pajak", table([{ h: "Pos" }, { h: "Akun", cls: "trunc" }, { h: "Saldo (Rp)", num: true }], rows))
     + block("Dokumen pajak", table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Jenis" }, { h: "Jumlah (Rp)", num: true }, { h: "Status" }],
@@ -899,7 +1049,7 @@ function vJournal() {
       <p class="meta">Disimpan sebagai draf. Akun kontrol (piutang, utang, persediaan, aset tetap) tidak menerima jurnal manual.</p>`, "Simpan draf");
   const filters = `<form data-form="filter" class="actions" aria-label="Saring jurnal">
       <label class="meta" for="f-jstatus">Status</label>${sel("f", "jstatus", [["", "Semua"], ["draft", "Draf"], ["posted", "Diposting"], ["reversed", "Dibalik"]], f.jstatus)}
-      <label class="meta" for="f-journal">Jurnal</label>${sel("f", "journal", [["", "Semua"], ...Object.entries(JOURNALS)], f.journal)}</form>`;
+      <label class="meta" for="f-journal">Jurnal</label>${sel("f", "journal", [["", "Semua"], ...Object.entries(JOURNALS), ...state.cashbanks.map((c) => [c.id, c.name])], f.journal)}</form>`;
   return { sub: `${state.entries.length} jurnal · nomor berurutan tanpa celah per jurnal per tahun`, actions: filters,
     body: split(block("Daftar jurnal", entriesTable(list)), side), lineTpl: line };
 }
@@ -987,6 +1137,7 @@ const VIEWS = {
   dasbor: ["Ringkasan", "Dasbor", vDash],
   penjualan: ["Transaksi", "Penjualan dan piutang", vSales],
   pembelian: ["Transaksi", "Pembelian dan utang", vPurch],
+  "kas-bank": ["Transaksi", "Kas dan bank", vCash],
   aset: ["Transaksi", "Aset tetap", vAssets],
   pajak: ["Transaksi", "Pajak", vTax],
   jurnal: ["Buku besar", "Jurnal", vJournal],
@@ -1012,6 +1163,7 @@ function render() {
   lineTpl = v.lineTpl ?? null;
   document.getElementById("main").innerHTML = `<header class="toolbar"><div><h1>${title}</h1><p class="meta">${v.sub ?? ""}</p></div>${v.actions ?? ""}</header><div class="content">${v.body}</div>`;
   document.querySelectorAll('form[data-form="receipt"],form[data-form="payment"]').forEach(suggest);
+  if (ui.focus) { const el = document.getElementById(ui.focus); ui.focus = null; el?.scrollIntoView({ block: "center" }); el?.focus(); }
 }
 function suggest(form) {
   const f = Object.fromEntries(new FormData(form)), d = state.docs.find((x) => x.no === f.ref);
@@ -1019,12 +1171,18 @@ function suggest(form) {
   const svc = form.dataset.form === "receipt" ? "service" : "purchase_service", cb = form.elements.pph23;
   cb.disabled = d.kind !== svc;
   if (cb.disabled) cb.checked = false;
-  const rem = openAmt(d);
-  let w = 0n;
+  const rem = openAmt(d), r = form.dataset.form === "receipt";
+  let w = 0n, fee = 0n;
   try { if (cb.checked) w = M(taxAmt("PPh 23", d.dpp, f.date || d.date)); } catch {}
-  form.elements.bank.value = txt(rem - w);
+  try { fee = f.charges ? M(money(f.charges)) : 0n; } catch {}
+  // settle the whole remainder by default; the user can lower it for a part payment
+  const through = r ? rem - w - fee : rem - w + fee;
+  form.elements.bank.value = txt(through);
   const h = form.querySelector('[data-help="bank"]');
-  h.textContent = h.dataset.orig = `Sisa ${txt(rem)}${w ? `, PPh 23 ${txt(w)} dicatat sebagai ${form.dataset.form === "receipt" ? "pajak dibayar di muka" : "utang PPh 23"}` : ""}.`;
+  const parts = [`Sisa ${txt(rem)}`];
+  if (w) parts.push(`PPh 23 ${txt(w)} jadi ${r ? "pajak dibayar di muka" : "utang PPh 23"}`);
+  if (fee) parts.push(`biaya bank ${txt(fee)} jadi beban`);
+  h.textContent = h.dataset.orig = parts.join(", ") + ". Kurangi untuk bayar sebagian.";
 }
 function showErrors(form, r) {
   if (r.field) {
@@ -1081,11 +1239,19 @@ document.addEventListener("change", (ev) => {
   const form = ev.target.closest("form[data-form]");
   if (!form) return;
   if (form.dataset.form === "filter") form.requestSubmit();
-  else if ((form.dataset.form === "receipt" || form.dataset.form === "payment") && ev.target.name !== "bank") suggest(form);
+  else if ((form.dataset.form === "receipt" || form.dataset.form === "payment") && ["ref", "pph23", "charges", "date"].includes(ev.target.name)) suggest(form);
 });
 function act(el) {
   const a = el.dataset.act, id = el.dataset.id;
   if (a === "entry" || a === "doc") { ui.sel = { type: a, id }; render(); }
+  else if (a === "cb") { ui.f.cbsel = id; render(); }
+  else if (a === "clear") { toggleCleared(id); render(); document.getElementById(`rc-${id}`)?.focus(); }
+  else if (a === "pay") {
+    // Register payment from the invoice: open the payment form with it chosen
+    const d = state.docs.find((x) => x.no === id), target = AR_KINDS.includes(d.kind) ? "penjualan" : "pembelian";
+    ui.payFor = id; ui.sel = null; ui.focus = `${AR_KINDS.includes(d.kind) ? "receipt" : "payment"}-cb`;
+    if (viewId() === target) render(); else location.hash = target;
+  }
   else if (a === "new-account") { ui.sel = { type: "new-account" }; render(); document.getElementById("account-code")?.focus(); }
   else if (a === "close") { ui.sel = null; render(); }
   else if (a === "addline" && lineTpl) {
@@ -1125,7 +1291,7 @@ try {
   coa = await (await fetch(COA_URL)).json();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(STORE)); } catch {}
-  state = saved?.v === 1 ? saved : seed();
+  state = saved?.v === 2 ? saved : seed();
   render();
 } catch (e) {
   document.getElementById("main").innerHTML = `<div class="content"><div class="note note--bad" role="alert"><strong>Gagal memuat</strong><span>${esc(e.message)}. Buka lewat server lokal, bukan file://.</span></div></div>`;

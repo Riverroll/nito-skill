@@ -77,13 +77,19 @@ try {
     const L = window.__ledger, s = L.state, M = L.core.toMinor;
     const bal = (c) => s.entries.filter((e) => e.status !== "draft").flatMap((e) => e.lines).filter((l) => l.account === c)
       .reduce((t, l) => t + M(l.debit) - M(l.credit), 0n).toString();
-    return { checks: L.checks().map((c) => [c.name, c.ok]), bank: bal("1-1200"), ar: bal("1-1300"), ap: bal("2-1100"),
+    return { checks: L.checks().map((c) => [c.name, c.ok]), bank: bal("1-1200"), mdr: bal("1-1210"), kas: bal("1-1100"),
+      interest: bal("7-1000"), admin: bal("6-3000"), ar: bal("1-1300"), ap: bal("2-1100"),
+      mdrNumbers: s.entries.filter((e) => e.journal === "MDR").map((e) => e.entry_number).join(),
       ppnLB: bal("1-1750"), ppnOut: bal("2-1400"), pph23: bal("2-1510"), accdep: bal("1-2190"), grir: bal("2-1150"),
       prepaid: bal("1-1800"), docs: s.docs.length, drafts: s.entries.filter((e) => e.status === "draft").length,
       numbers: s.entries.filter((e) => e.journal === "PJ").map((e) => e.entry_number) };
   })()`);
   for (const [name, pass] of n.checks) ok(`seed: ${name}`, pass);
-  ok("seed: bank = 500,000,000 - 88,800,000 + 54,500,000 - 43,600,000 - 800,000", n.bank === "42130000000", n.bank);
+  ok("seed: BCA = 500,000,000 - 100,000,000 - 5,000,000 + 54,500,000 - 43,600,000 - 800,000", n.bank === "40510000000", n.bank);
+  ok("seed: Mandiri = 100,000,000 - 88,800,000 + 250,000 interest - 150,000 charges (C1)", n.mdr === "1130000000", n.mdr);
+  ok("seed: petty cash 5,000,000 from the transfer (C2)", n.kas === "500000000", n.kas);
+  ok("seed: interest is other income, the charge an expense", n.interest === "-25000000" && n.admin === "15000000", `${n.interest} / ${n.admin}`);
+  ok("seed: Mandiri numbers its own journal without a gap", n.mdrNumbers === "MDR/2026/0001,MDR/2026/0002,MDR/2026/0003", n.mdrNumbers);
   ok("seed: receivable = A1 105,450,000 + 13,875,000 open", n.ar === "11932500000", n.ar);
   ok("seed: payable = the machine bill 142,080,000 (F1)", n.ap === "-14208000000", n.ap);
   ok("seed: January PPN settles to lebih bayar 11,330,000", n.ppnLB === "1133000000", n.ppnLB);
@@ -124,7 +130,26 @@ try {
     const orig = s().entries.find((e) => e.entry_number === a.doc.entries[0]);
     out.origKept = orig.status === "reversed" && !!orig.reversed_by;
     out.tbBalanced = L.core.trialBalance(s().entries).balanced;
-    out.over = H.receipt({ token: t(), ref: s().docs.find((x) => x.kind === "sale").no, date: "2026-03-10", bank: "999.999.999" }).errors?.join();
+    const sale = s().docs.find((x) => x.kind === "sale");
+    out.over = H.receipt({ token: t(), ref: sale.no, date: "2026-03-10", cb: "BCA", method: "transfer", bank: "999.999.999" }).errors?.join();
+    // register payment: into the chosen bank, a fee taken by the bank, a part payment
+    const bal = (c) => s().entries.filter((e) => e.status !== "draft").flatMap((e) => e.lines).filter((l) => l.account === c)
+      .reduce((x, l) => x + L.core.toMinor(l.debit) - L.core.toMinor(l.credit), 0n);
+    const mdr0 = bal("1-1210"), fee0 = bal("6-3000");
+    const part = H.receipt({ token: t(), ref: sale.no, date: "2026-03-10", cb: "MDR", method: "giro", ref_no: "GIRO 4471",
+      bank: "50.000.000", charges: "6.500" });
+    out.part = part.ok && part.doc.entries[0].startsWith("MDR/") && bal("1-1210") - mdr0 === 5000000000n && bal("6-3000") - fee0 === 650000n;
+    out.rest = (() => { const d = s().docs.find((x) => x.no === sale.no);
+      const owed = L.core.toMinor(d.total) - s().docs.filter((x) => x.ref === d.no && x.status === "open").reduce((y, x) => y + L.core.toMinor(x.amount), 0n);
+      return owed.toString(); })();
+    const kas0 = bal("1-1100");
+    const bill = s().docs.find((x) => x.kind === "asset");
+    out.payKas = H.payment({ token: t(), ref: bill.no, date: "2026-03-11", cb: "KAS", method: "cash", bank: "1.000.000" }).ok && kas0 - bal("1-1100") === 100000000n;
+    out.noBank = H.payment({ token: t(), ref: bill.no, date: "2026-03-11", cb: "", method: "cash", bank: "1.000" }).errors?.join();
+    out.sameAcct = H.transfer({ token: t(), date: "2026-03-12", from: "BCA", to: "BCA", amount: "1.000" }).errors?.join();
+    out.otherControl = H.cashother({ token: t(), date: "2026-03-12", cb: "BCA", dir: "in", account: "1-1300", amount: "1.000", memo: "x" }).errors?.join();
+    // reconciliation: January BCA ties to the statement; unticking one line opens a difference
+    out.reconSeed = (() => { const st = s().statements.BCA; return !!st; })();
     delete s().defaults.sales;
     out.noRole = H.sale({ token: t(), kind: "sale", party: "C1", date: "2026-03-05", dpp: "1.000.000" }).errors?.join();
     s().defaults.sales = "4-1000";
@@ -144,12 +169,19 @@ try {
   ok("cancelling a document reverses its journal", r.cancel === true);
   ok("the cancelled journal stays in the ledger, marked reversed", r.origKept === true);
   ok("the trial balance still balances after the reversal", r.tbBalanced === true);
-  ok("refuses a receipt above what is owed", /Melebihi sisa/.test(r.over), r.over);
+  ok("refuses a receipt above what is owed", /melebihi sisa/i.test(r.over), r.over);
+  ok("register payment: a giro into Mandiri, the bank's fee booked as expense, numbered in Mandiri's journal", r.part === true);
+  ok("a part payment leaves the rest open: 105,450,000 - 50,006,500", r.rest === "5544350000", r.rest);
+  ok("a cash payment comes out of petty cash", r.payKas === true);
+  ok("refuses a payment with no cash or bank chosen", /Pilih kas atau bank/.test(r.noBank), r.noBank);
+  ok("refuses a transfer to the same account", /rekening tujuan/.test(r.sameAcct), r.sameAcct);
+  ok("refuses a control account as the counterpart of a cash line", /non-kontrol/.test(r.otherControl), r.otherControl);
+  ok("the example carries a saved BCA statement", r.reconSeed === true);
   ok("refuses a posting whose role has no account", /no account configured/.test(r.noRole), r.noRole);
   ok("every subledger still ties to its control account", r.checks.length === 0, r.checks.join());
 
   // ---- every view renders, at desktop and at phone width
-  const views = ["dasbor", "penjualan", "pembelian", "aset", "pajak", "jurnal", "buku-besar", "neraca-saldo", "laporan", "akun", "periode", "konfigurasi"];
+  const views = ["dasbor", "penjualan", "pembelian", "kas-bank", "aset", "pajak", "jurnal", "buku-besar", "neraca-saldo", "laporan", "akun", "periode", "konfigurasi"];
   for (const w of [1440, 390]) {
     const bad = [];
     for (const v of views) {
@@ -180,6 +212,28 @@ try {
   ok("a document row opens its inspector, with its journals and a cancel action",
     insp.title === insp.id && insp.lines >= 1 && insp.cancel, JSON.stringify(insp));
   ok("the journal lines fit the inspector without scrolling sideways", insp.wide === 0, `${insp.wide} table(s) scroll`);
+
+  // ---- register payment from the invoice, and the bank reconciliation on screen
+  const pay = await evaluate(`(async () => {
+    document.querySelector('tr[data-act="doc"][data-id="INV/2026/0001"]').click();
+    document.querySelector('[data-act="pay"]').click();
+    await new Promise((r) => setTimeout(r, 50));
+    const f = document.querySelector('form[data-form="receipt"]');
+    return { ref: f?.elements.ref.value, focus: document.activeElement?.id, bank: f?.elements.bank.value };
+  })()`);
+  ok("an invoice's Catat penerimaan opens the payment form with that invoice chosen",
+    pay.ref === "INV/2026/0001" && pay.focus === "receipt-cb" && pay.bank === "55.443.500,00", JSON.stringify(pay));
+  await evaluate(`location.hash = "kas-bank"`); await sleep(80);
+  const rc = await evaluate(`(async () => {
+    const txt = () => [...document.querySelectorAll("dd .badge")].map((b) => b.textContent).join();
+    const before = txt();
+    document.querySelector('input[data-act="clear"]:checked').click();
+    await new Promise((r) => setTimeout(r, 30));
+    return { before, after: txt(), rows: document.querySelectorAll('tr[data-act="cb"]').length };
+  })()`);
+  ok("Kas dan bank lists every cash and bank account", rc.rows === 3, String(rc.rows));
+  ok("the January BCA reconciliation shows no difference", rc.before === "Nol, cocok", rc.before);
+  ok("unticking a matched line opens a difference", rc.after !== "Nol, cocok" && rc.after.length > 0, rc.after);
 
   // ---- the statements on screen agree with each other
   await open(1440, "#laporan");
