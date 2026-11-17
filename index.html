@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>nito-skill</title>
+<meta name="description" content="Two Claude Code skills: nito-design for measured page and tool design, nito-accounting for an ERP ledger that balances, Indonesian tax included.">
+<link rel="stylesheet" href="skills/nito-design/assets/apple-base.css">
+<link rel="preload" as="image" href="example/media/site/ledger-dash-light.webp" media="(min-width: 735px)">
+<style>
+  /* The landing page for nito-skill, built with nito-design's marketing mode.
+     Its own palette: the green of a ruled ledger book as the one accent, on
+     the measured neutrals. Every picture on it is something the two skills
+     made: the showcase ledger and the before-and-after pairs. */
+  :root {
+    --accent: #0f766e;          /* 5.47:1 on #fff, 4.70:1 on #f5f5f7 */
+    --accent-hover: #0d6b64;
+    --accent-active: #0b615b;
+    --on-accent: #f5f5f7;
+    --link: #0f766e;
+    --hairline: #d2d2d7;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --accent: #2dd4bf; --accent-hover: #3fdcc8; --accent-active: #26c2ae; --on-accent: #1d1d1f; --link: #2dd4bf; --hairline: #424245; } }
+  :root[data-theme="dark"] { --accent: #2dd4bf; --accent-hover: #3fdcc8; --accent-active: #26c2ae; --on-accent: #1d1d1f; --link: #2dd4bf; --hairline: #424245; }
+  /* the inverse bands carry the light-on-dark accent in either theme */
+  .section--dark { --accent: #2dd4bf; --accent-hover: #3fdcc8; --accent-active: #26c2ae; --on-accent: #1d1d1f; --link: #2dd4bf; --hairline: #424245; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .section--dark {
+    --accent: #0f766e; --accent-hover: #0d6b64; --accent-active: #0b615b; --on-accent: #f5f5f7; --link: #0f766e; --hairline: #d2d2d7; } }
+  :root[data-theme="dark"] .section--dark { --accent: #0f766e; --accent-hover: #0d6b64; --accent-active: #0b615b; --on-accent: #f5f5f7; --link: #0f766e; --hairline: #d2d2d7; }
+
+  html { scroll-behavior: smooth; }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :where(a, button, input, select, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  h1, h2, h3, p, figure { margin: 0; }
+  .section { padding-left: max(22px, env(safe-area-inset-left, 0px)); padding-right: max(22px, env(safe-area-inset-right, 0px)); }
+  .section--tight { --section-padding: 60px; }
+  .section--flush { padding-bottom: 0; }
+  .t-headline-super { font: 600 80px/1.05 var(--font-display); letter-spacing: -0.015em; }
+  @media (max-width: 1068px) { .t-headline-super { font-size: 64px; line-height: 1.0625; letter-spacing: -0.009em; } }
+  @media (max-width: 734px)  { .t-headline-super { font-size: 48px; line-height: 1.0834933333; letter-spacing: -0.003em; } }
+  .t-eyebrow { font: 600 21px/1.1904761905 var(--font-display); letter-spacing: .011em; color: var(--accent); }
+  .t-eyebrow + * { margin-top: var(--headline-plus-headline); }
+  .t-headline-super + * { margin-top: var(--headline-plus-first); }
+  .t-intro { color: var(--ink-secondary); max-width: 692px; }
+  .section--dark .t-intro, .section--dark .t-body { color: var(--ink-inverse-muted); }
+  .t-intro + .cta-row, .t-body + .cta-row { margin-top: 1.6em; }
+  .t-body-reduced { color: var(--ink-secondary); }
+  .section--dark .t-body-reduced { color: var(--ink-inverse-muted); }
+  .left { align-items: flex-start; text-align: left; }
+
+  /* hero: one subject, the ledger, cropped by the section edge */
+  .hero { padding-top: 120px; }
+  .shot { width: 100%; max-width: 1260px; margin: 64px auto 0; border-radius: var(--radius-card) var(--radius-card) 0 0;
+          overflow: hidden; aspect-ratio: 16 / 8; background: var(--surface);
+          box-shadow: 0 0 0 1px var(--hairline); }
+  .shot img { display: block; width: 100%; height: auto; }
+  @media (max-width: 734px) { .hero { padding-top: 80px; } .shot { aspect-ratio: 4 / 3; margin-top: 48px; }
+                              .shot img { width: 200%; max-width: none; } }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 40px; width: 100%; margin-top: 48px; text-align: left; }
+  .stat b { display: block; font: 600 48px/1.0834933333 var(--font-display); letter-spacing: -0.003em; font-variant-numeric: tabular-nums; }
+  .stat span { display: block; margin-top: 8px; }
+  @media (max-width: 1068px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 734px)  { .stat b { font-size: 40px; line-height: 1.1; letter-spacing: 0; } }
+
+  .frame-img { width: 100%; max-width: 1260px; margin: 48px auto 0; border-radius: var(--radius-card); overflow: hidden; }
+  .frame-img img { display: block; width: 100%; height: auto; }
+  .more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 16px; font-size: 17px; }
+  .more::after { content: " ›"; }
+
+  /* before / after: one image clipped over the other, a range input on top */
+  .compare { position: relative; width: 100%; max-width: 1068px; margin: 48px auto 0; border-radius: var(--radius-tile);
+             overflow: hidden; box-shadow: 0 0 0 1px var(--hairline); --pos: 50%; }
+  .compare img { display: block; width: 100%; height: auto; }
+  .compare .after { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--pos)); }
+  .compare .rule { position: absolute; top: 0; bottom: 0; left: var(--pos); width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; }
+  .compare .tag { position: absolute; top: 16px; padding: 4px 12px; border-radius: var(--radius-pill); background: var(--surface-inverse); color: var(--ink-inverse);
+                  font: 600 12px/1.3333733333 var(--font-text); letter-spacing: -0.01em; }
+  .compare .tag--l { left: 16px; } .compare .tag--r { right: 16px; }
+  .compare input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+  .compare:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; width: 100%; margin-top: 48px; text-align: left; }
+  .tile { background: var(--surface-alt); border-radius: var(--radius-tile); padding: 28px; }
+  .section--alt .tile { background: var(--surface); }
+  .tile h3 { font: 600 21px/1.1904761905 var(--font-display); letter-spacing: .011em; }
+  .tile p { margin-top: 0.8em; font: 400 17px/1.4705882353 var(--font-text); letter-spacing: -0.022em; color: var(--ink-secondary); }
+  @media (max-width: 1068px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 734px)  { .grid, .stats { grid-template-columns: minmax(0, 1fr); } }
+
+  /* the live journal: the real posting core, in the page */
+  .demo { width: 100%; max-width: 1068px; margin-top: 48px; display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px;
+          text-align: left; background: #1d1d1f; color: #f5f5f7; border-radius: var(--radius-card); padding: 32px; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .demo { background: #fff; color: #1d1d1f; } }
+  :root[data-theme="dark"] .demo { background: #fff; color: #1d1d1f; }
+  .demo .muted { color: var(--ink-inverse-muted); }
+  .more-row { margin-top: 40px; }
+  .demo form { display: flex; flex-direction: column; gap: 16px; }
+  .demo label { display: flex; flex-direction: column; gap: 8px; font: 600 14px/1.2857742857 var(--font-text); letter-spacing: -0.016em; }
+  .demo input:not([type=checkbox]), .demo select { height: 44px; padding: 0 12px; border-radius: var(--radius-tile); border: 1px solid var(--hairline);
+          background: transparent; color: inherit; font: 400 17px/1.2 var(--font-text); letter-spacing: -0.022em; }
+  .demo input[inputmode] { text-align: right; font-variant-numeric: tabular-nums; }
+  .demo .check { flex-direction: row; align-items: center; min-height: 44px; font-weight: 400; }
+  .demo .check input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+  .demo .err { color: #ff8a80; font: 400 12px/1.3333733333 var(--font-text); min-height: 16px; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .demo .err { color: #b91c1c; } }
+  :root[data-theme="dark"] .demo .err { color: #b91c1c; }
+  .journal { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+  .journal .tw { overflow-x: auto; }
+  .journal table { width: 100%; border-collapse: collapse; font: 400 14px/1.2857742857 var(--font-text); letter-spacing: -0.016em; }
+  .journal th, .journal td { height: 40px; padding: 0 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--hairline); }
+  .journal th { font-weight: 600; }
+  .journal td.num, .journal th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .journal tr.cr td:first-child { padding-left: 32px; }
+  .journal tfoot td { font-weight: 600; border-bottom: 0; }
+  .verdict { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font: 400 14px/1.2857742857 var(--font-text); letter-spacing: -0.016em; }
+  /* the tint carries the state and the word carries the meaning; the text stays
+     in the card's own ink so the page keeps its seven text colours */
+  .badge { display: inline-flex; align-items: center; height: 24px; padding: 0 12px; border-radius: var(--radius-pill);
+           font: 600 12px/1 var(--font-text); letter-spacing: -0.01em; background: color-mix(in srgb, var(--c) 40%, transparent); color: inherit; }
+  .badge--ok { --c: #34d399; } .badge--bad { --c: #ff8a80; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .badge--ok { --c: #116633; } :root:not([data-theme="light"]) .badge--bad { --c: #b91c1c; } }
+  :root[data-theme="dark"] .badge--ok { --c: #116633; } :root[data-theme="dark"] .badge--bad { --c: #b91c1c; }
+  .demo .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .demo .button { font-size: 14px; padding: 8px 16px; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; letter-spacing: 0; }
+  @media (max-width: 1068px) { .demo { grid-template-columns: minmax(0, 1fr); padding: 24px; } }
+
+  .clip { width: 100%; max-width: 1260px; margin: 48px auto 0; aspect-ratio: 16 / 10; border-radius: var(--radius-card); overflow: hidden;
+          box-shadow: 0 0 0 1px var(--hairline); --media-bed: var(--surface); }
+
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; width: 100%;
+           max-width: 1260px; margin-inline: auto; text-align: left; }
+  .split .frame-img { margin: 0; }
+  @media (max-width: 1068px) { .split { grid-template-columns: minmax(0, 1fr); } }
+  .list { margin: 24px 0 0; padding: 0; list-style: none; display: grid; gap: 16px; }
+  .list li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; padding-top: 16px; border-top: 1px solid var(--hairline); }
+  .list b { font: 600 17px/1.2352941176 var(--font-text); letter-spacing: -0.022em; }
+  .list span { color: var(--ink-secondary); }
+
+  .prompts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; width: 100%; margin-top: 48px; text-align: left; }
+  .prompt { border-radius: var(--radius-tile); padding: 28px; background: var(--surface-alt); display: flex; flex-direction: column; gap: 16px; }
+  .prompt q { font: 600 21px/1.1904761905 var(--font-display); letter-spacing: .011em; quotes: "\201C" "\201D"; }
+  .prompt p { color: var(--ink-secondary); }
+  .prompt .t-caption { margin-top: auto; }
+  @media (max-width: 734px) { .prompts { grid-template-columns: minmax(0, 1fr); } }
+
+  .proof { width: 100%; max-width: 734px; margin: 48px auto 0; padding: 0; list-style: none; text-align: left; }
+  .proof li { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+  .proof b { font-weight: 400; }
+  .proof span { color: var(--ink-inverse-muted); }
+  .proof em { font-style: normal; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+  @media (max-width: 734px) { .proof li { grid-template-columns: minmax(0, 1fr) auto; } .proof span { grid-row: 2; grid-column: 1 / -1; } }
+
+  .install { width: 100%; max-width: 734px; margin-top: 48px; display: flex; flex-direction: column; gap: 24px; text-align: left; }
+  .cmd { display: flex; align-items: center; gap: 12px; background: var(--surface-alt); border-radius: var(--radius-tile); padding: 12px 12px 12px 24px; }
+  .cmd pre { flex: 1; min-width: 0; margin: 0; overflow-x: auto; line-height: 1.6; }
+  .cmd button { flex: none; min-height: 44px; padding: 0 16px; border-radius: var(--radius-pill); border: 1px solid var(--hairline);
+                background: var(--surface); color: var(--ink); font: 400 14px/1 var(--font-text); cursor: pointer; }
+  .cmd button:hover { background: var(--surface-alt); }
+
+  footer.section { --section-padding: 40px; }
+  footer .section-content { gap: 8px; }
+  footer p { color: var(--ink-muted); font: 400 12px/1.3333733333 var(--font-text); letter-spacing: -0.01em; max-width: 734px; }
+</style>
+</head>
+<body>
+<main>
+  <section class="section hero section--flush" aria-labelledby="top">
+    <div class="section-content">
+      <p class="t-eyebrow">nito-skill for Claude Code</p>
+      <h1 class="t-headline-super" id="top">Built to measure.</h1>
+      <p class="t-intro">Two skills that work while Claude builds. nito-design gives pages and tools the proportions, rhythm and motion measured from apple.com. nito-accounting gives an ERP a ledger that balances, with Indonesian tax.</p>
+      <div class="cta-row">
+        <a class="button" href="#install">Install</a>
+        <a class="button button--secondary" href="example/ledger/">Open the ledger</a>
+      </div>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source media="(max-width: 734px)" srcset="example/media/site/ledger-dash-light-1000.webp">
+        <img src="example/media/site/ledger-dash-light.webp" width="2000" height="1250" fetchpriority="high" decoding="async"
+             alt="The showcase ledger's dashboard: four balances across the top, six ledger checks all marked Cocok, and the most recent journal entries with their numbers and amounts.">
+      </picture>
+    </figure>
+  </section>
+
+  <section class="section section--alt section--tight">
+    <div class="section-content left">
+      <h2 class="t-headline" data-reveal>Measured, not guessed.</h2>
+      <div class="stats">
+        <div class="stat" data-reveal><b>106</b><span class="t-body-reduced">type classes read from apple.com's shipped stylesheets</span></div>
+        <div class="stat" data-reveal><b>338</b><span class="t-body-reduced">headlines counted for the copy rules</span></div>
+        <div class="stat" data-reveal><b>106</b><span class="t-body-reduced">worked journal entries, each re-added by a test</span></div>
+        <div class="stat" data-reveal><b>61</b><span class="t-body-reduced">posting events, each replaying one of those entries</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--dark" id="design">
+    <div class="section-content">
+      <p class="t-eyebrow" data-reveal>nito-design</p>
+      <h2 class="t-headline-elevated" data-reveal>Pages with a pulse.</h2>
+      <p class="t-intro" data-reveal>A spacing ladder, rhythm in em, a type scale with its tracking, five easing curves and sticky scroll. Laid over your palette, never in place of it.</p>
+    </div>
+    <div class="compare" data-reveal>
+      <img src="example/media/site/fixme-before.webp" width="2000" height="1250" loading="lazy" decoding="async"
+           alt="Before: a dark agency page with a teal accent, cards in different colours, and headline sizes that do not step.">
+      <img class="after" src="example/media/site/fixme-after.webp" width="2000" height="1250" loading="lazy" decoding="async"
+           alt="After: the same page, same copy and same teal, with one card treatment, three ink steps and an even rhythm.">
+      <span class="rule" aria-hidden="true"></span>
+      <span class="tag tag--l" aria-hidden="true">Before</span><span class="tag tag--r" aria-hidden="true">After</span>
+      <input type="range" min="0" max="100" value="50" aria-label="Compare the page before and after nito-design: slide right to show more of the before page">
+    </div>
+    <div class="section-content">
+      <p class="t-body-reduced more-note" data-reveal>Same markup, same copy, same teal. Six accent hues and fifteen text colours on the left; nothing countable left on the right. Drag to compare.</p>
+    </div>
+  </section>
+
+  <section class="section section--alt" id="tools">
+    <div class="section-content">
+      <h2 class="t-headline" data-reveal>Tools get their own numbers.</h2>
+      <p class="t-intro" data-reveal>An ERP is read for eight hours, not once. Rows at one height, 14px data, sticky headers, numbers aligned by place value. Drag to compare.</p>
+    </div>
+    <div class="compare" data-reveal>
+      <img src="example/media/site/erp-before.webp" width="2000" height="1250" loading="lazy" decoding="async"
+           alt="Before: a purchase-order grid with mixed row heights, numbers aligned left and several accent colours.">
+      <img class="after" src="example/media/site/erp-after.webp" width="2000" height="1250" loading="lazy" decoding="async"
+           alt="After: the same purchase orders with one row height, right-aligned numbers and one accent.">
+      <span class="rule" aria-hidden="true"></span>
+      <span class="tag tag--l" aria-hidden="true">Before</span><span class="tag tag--r" aria-hidden="true">After</span>
+      <input type="range" min="0" max="100" value="50" aria-label="Compare before and after: slide right to show more of the before screen">
+    </div>
+    <div class="section-content">
+      <p class="t-body-reduced more-note" data-reveal>The audit flags 21 problems on the left and none on the right. Every word of the data is the same.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-content">
+      <h2 class="t-headline" data-reveal>What it covers.</h2>
+      <div class="grid">
+        <div class="tile stagger-item" data-reveal><h3>Restraint</h3><p>One accent, three ink steps, three radii, two weights. The audit counts them.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Type scale</h3><p>All 106 measured classes, and tracking that crosses zero at 40px.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Rhythm</h3><p>Spacing in em, so the gap scales with the type above it.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Motion</h3><p>Five curves ranked by use, reveals, stagger and sticky parallax.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Moving pictures</h3><p>Six-file clip ladders, a still underneath, clips rendered when there is no footage.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Composition</h3><p>A subject on every screen, scale contrast, and a pace that changes.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Dense tools</h3><p>Table and form contracts for ERPs and admin panels.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>Headlines</h3><p>Short, declarative, ending in a full stop. Three words is the median.</p></div>
+        <div class="tile stagger-item" data-reveal><h3>The audit</h3><p><code>tools/audit.mjs</code> scores any live URL, in marketing or ERP mode.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--dark" id="accounting">
+    <div class="section-content">
+      <p class="t-eyebrow" data-reveal>nito-accounting</p>
+      <h2 class="t-headline-elevated" data-reveal>Books that balance.</h2>
+      <p class="t-intro" data-reveal>Modules send amounts by role. One posting core turns them into balanced entries and refuses the rest. The chart changes per company; the core does not. Try it.</p>
+      <div class="demo" data-reveal>
+        <form id="demo" novalidate>
+          <label>Sale
+            <select id="d-kind"><option value="sale">Goods, with cost of sales</option><option value="service">Service</option></select></label>
+          <label>DPP (Rp)
+            <input id="d-dpp" inputmode="decimal" value="95.000.000" autocomplete="off"></label>
+          <label id="d-cost-wrap">Cost of goods (Rp)
+            <input id="d-cost" inputmode="decimal" value="60.000.000" autocomplete="off"></label>
+          <label class="check"><input type="checkbox" id="d-pkp" checked> The company is PKP (charges PPN)</label>
+          <p class="err" id="d-err" role="alert"></p>
+        </form>
+        <div class="journal">
+          <div class="tw"><table>
+            <thead><tr><th>Account</th><th class="num">Debit (Rp)</th><th class="num">Credit (Rp)</th></tr></thead>
+            <tbody id="d-lines"><tr><td colspan="3" class="muted">Loading the posting core…</td></tr></tbody>
+            <tfoot><tr><td>Total</td><td class="num" id="d-dr"></td><td class="num" id="d-cr"></td></tr></tfoot>
+          </table></div>
+          <p class="verdict"><span id="d-badge" class="badge badge--ok">Balanced</span><span id="d-why" class="muted"></span></p>
+          <div class="actions">
+            <button class="button button--secondary" type="button" id="d-break">Change one line by Rp1</button>
+          </div>
+          <p class="t-caption muted">PPN is 12% on DPP nilai lain 11/12, the rate found in force through mid-2026. Rates are parameters to re-check, never constants. Amounts are worked entry A1 from the references.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="ledger">
+    <div class="section-content">
+      <h2 class="t-headline" data-reveal>Already running.</h2>
+      <p class="t-intro" data-reveal>The showcase ledger posts a service invoice. Receivable, revenue and output PPN, numbered without gaps, the source document on every line.</p>
+    </div>
+    <div class="media-stack clip" role="img" data-reveal
+         aria-label="The showcase ledger: an amount of 25,000,000 is typed into a service invoice and posted. The invoice appears in the list and a panel opens with its journal: Piutang Usaha debit 27,750,000, Pendapatan Jasa credit 25,000,000, PPN Keluaran credit 2,750,000, debit equal to credit.">
+      <video class="media-layer media-clip" preload="none" muted playsinline
+             data-src-small="example/media/site/ledger-post-small.mp4" data-src-large="example/media/site/ledger-post-large.mp4"></video>
+      <picture class="media-layer media-still media-still--start">
+        <source media="(max-width: 734px)" srcset="example/media/site/ledger-post-start-1080.webp">
+        <img src="example/media/site/ledger-post-start-2160.webp" width="2160" height="1350" alt="" loading="lazy" decoding="async">
+      </picture>
+      <picture class="media-layer media-still media-still--end">
+        <source media="(max-width: 734px)" srcset="example/media/site/ledger-post-end-1080.webp">
+        <img src="example/media/site/ledger-post-end-2160.webp" width="2160" height="1350" alt="" loading="lazy" decoding="async">
+      </picture>
+    </div>
+    <div class="section-content">
+      <div class="cta-row more-row">
+        <a class="button" href="example/ledger/">Open the ledger</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--alt">
+    <div class="split">
+      <div>
+        <h2 class="t-headline" data-reveal>Every part of the books.</h2>
+        <ul class="list">
+          <li data-reveal><b>Chart</b><span>A 29-account Indonesian template. The engine reads type and flags, never the code.</span></li>
+          <li data-reveal><b>Journals</b><span>Adjusting, reversing, closing and correcting entries. Nothing posted is ever edited.</span></li>
+          <li data-reveal><b>AR and AP</b><span>Open items that tie to the control account, PPN Keluaran and Masukan, PPh 23.</span></li>
+          <li data-reveal><b>Stock and assets</b><span>Valuation and COGS, GR/IR, depreciation commercial and fiscal, leases.</span></li>
+          <li data-reveal><b>Cash and bank</b><span>A journal per account, register payment from the invoice, fees, transfers, reconciliation.</span></li>
+          <li data-reveal><b>Payroll</b><span>BPJS, PPh 21 with TER, THR and severance.</span></li>
+          <li data-reveal><b>Close</b><span>Period locks, multi-currency revaluation, the statements derived from the ledger.</span></li>
+          <li data-reveal><b>Any ERP</b><span>A playbook and domain maps connect a CRM that only invoices, supply chain, voyage and shipping, projects. The dashboard comes with it.</span></li>
+        </ul>
+      </div>
+      <figure class="frame-img" data-reveal>
+        <img src="example/media/site/ledger-report-dark.webp" width="2000" height="1250" loading="lazy" decoding="async"
+             alt="The ledger's financial statements in dark mode: profit and loss beside the statement of financial position, with assets equal to liabilities plus equity.">
+      </figure>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-content">
+      <h2 class="t-headline" data-reveal>Ask in your own words.</h2>
+      <p class="t-intro" data-reveal>Both skills load on their own when the work calls for them. These are the kinds of requests they answer.</p>
+      <div class="prompts">
+        <div class="prompt" data-reveal><q>Jurnal penjualan kredit Rp100 juta, diskon 5%, PPN.</q><p>Piutang Usaha 105,450,000 against Penjualan 95,000,000 and PPN Keluaran 10,450,000, with the rule, its source and the date the rate was last confirmed.</p><span class="t-caption">nito-accounting</span></div>
+        <div class="prompt" data-reveal><q>Tambah modul akuntansi ke ERP baru kita.</q><p>Follows the build-from-zero guide: copies the schema, the posting service and the reports, seeds the company, connects each module through an event. No ledger is designed twice.</p><span class="t-caption">nito-accounting</span></div>
+        <div class="prompt" data-reveal><q>Halaman PO ini terlalu sesak dan susah dibaca.</q><p>Audits it in ERP mode, then fixes row height, sticky headers and number alignment. Your colours stay.</p><span class="t-caption">nito-design</span></div>
+        <div class="prompt" data-reveal><q>Bikin landing page untuk produk kami.</q><p>A measured type scale, rhythm in em, real pictures on every screen, a clip where the product moves, short headlines.</p><span class="t-caption">nito-design</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--dark section--tight" id="proof">
+    <div class="section-content">
+      <h2 class="t-headline" data-reveal>Checked in a browser.</h2>
+      <p class="t-intro" data-reveal>Each suite runs from the repo with one command. Most of them drive a real browser.</p>
+      <ul class="proof" data-reveal>
+        <li><b>accounting</b><span>every worked entry balances, every event replays, statements tie out, the service posts once</span><em>535</em></li>
+        <li><b>ledger</b><span>the showcase ties out, refuses what it must, fits desktop and phone</span><em>58</em></li>
+        <li><b>structure</b><span>the skills load, references resolve, tools hold their contract</span><em>88</em></li>
+        <li><b>erp</b><span>the dense-tool pair: 21 findings before, none after</span><em>37</em></li>
+        <li><b>composition</b><span>a correct page that is still dead, and the fix</span><em>26</em></li>
+        <li><b>gallery</b><span>the carousel: paddles, dots, keyboard</span><em>18</em></li>
+        <li><b>restraint</b><span>one accent, three inks, three radii, two weights</span><em>16</em></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="install">
+    <div class="section-content">
+      <h2 class="t-headline" data-reveal>Install.</h2>
+      <p class="t-intro" data-reveal>As a plugin, from inside Claude Code. Both skills come with it.</p>
+      <div class="install">
+        <div class="cmd"><pre id="c1">/plugin marketplace add Riverroll/nito-skill
+/plugin install nito-skill</pre><button type="button" data-copy="c1">Copy</button></div>
+        <p class="t-body-reduced">Or copy one skill into your own skills folder:</p>
+        <div class="cmd"><pre id="c2">git clone https://github.com/Riverroll/nito-skill.git
+cp -r nito-skill/skills/nito-accounting ~/.claude/skills/</pre><button type="button" data-copy="c2">Copy</button></div>
+        <p class="t-body-reduced">They apply on their own. To call one by name, type <code>/nito-design</code> or <code>/nito-accounting</code>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="section section--alt">
+  <div class="section-content">
+    <p><a href="https://github.com/Riverroll/nito-skill">github.com/Riverroll/nito-skill</a> · MIT licence</p>
+    <p>The ledger's company, customers, suppliers, bank accounts and amounts are examples. Tax rates in nito-accounting are dated and marked for re-checking. It is a guide for building software, not tax advice.</p>
+  </div>
+</footer>
+
+<script type="module">
+  document.documentElement.classList.remove("no-js");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) document.documentElement.classList.add("reduced-motion");
+
+  // reveals: the hidden state is set here, so the page reads fully without script
+  if (!reduced) {
+    const items = document.querySelectorAll("[data-reveal]");
+    document.querySelectorAll(".grid").forEach((g) => g.querySelectorAll(".stagger-item").forEach((el, i) => el.style.setProperty("--i", i)));
+    const io = new IntersectionObserver((es) => { for (const e of es) if (e.isIntersecting) { e.target.classList.replace("reveal--initial", "reveal--active"); io.unobserve(e.target); } },
+      { rootMargin: "0px 0px -10% 0px" });
+    for (const el of items) {
+      if (el.getBoundingClientRect().top < innerHeight) continue;   // already on screen: never hide it
+      el.classList.add("reveal--initial"); io.observe(el);
+    }
+  }
+
+  // the clip: fetched when near, plays once, never fetched under reduced motion
+  for (const v of document.querySelectorAll("video[data-src-large]")) {
+    if (reduced) continue;
+    const stack = v.closest(".media-stack");
+    new IntersectionObserver(([e], io) => {
+      if (!e.isIntersecting) return;
+      io.disconnect();
+      v.src = innerWidth < 735 ? v.dataset.srcSmall : v.dataset.srcLarge;
+      v.addEventListener("loadeddata", () => v.classList.add("media-clip--ready"), { once: true });
+      v.addEventListener("error", () => v.remove(), { once: true });
+    }, { rootMargin: "100% 0px" }).observe(stack);
+    new IntersectionObserver(([e]) => { if (e.isIntersecting && v.paused && !v.ended) v.play().catch(() => {}); }, { threshold: 0.5 }).observe(stack);
+  }
+
+  // before / after
+  for (const c of document.querySelectorAll(".compare")) {
+    const r = c.querySelector("input");
+    const set = () => c.style.setProperty("--pos", r.value + "%");
+    r.addEventListener("input", set); set();
+  }
+
+  // copy buttons
+  for (const b of document.querySelectorAll("[data-copy]")) b.addEventListener("click", async () => {
+    const pre = document.getElementById(b.dataset.copy);
+    try { await navigator.clipboard.writeText(pre.textContent); b.textContent = "Copied"; }
+    catch { getSelection().selectAllChildren(pre); b.textContent = "Selected"; }
+    setTimeout(() => (b.textContent = "Copy"), 2000);
+  });
+
+  // the live journal: nito-accounting's posting core, unchanged
+  const core = await import("./skills/nito-accounting/assets/posting-core.mjs");
+  const coa = await (await fetch("./skills/nito-accounting/assets/coa-template-id.json")).json();
+  const names = Object.fromEntries(coa.accounts.map((a) => [a.code, a.name]));
+  const defaults = { receivable: "1-1300", sales: "4-1000", service_revenue: "4-2000", tax_output_ppn: "2-1400", cogs: "5-0000", inventory: "1-1500" };
+  const accounts = Object.fromEntries(coa.accounts.map((a) => [a.code, { active: true, postable: true, control: !!a.control }]));
+  const ctx = { accounts, isPeriodOpen: () => true };
+  const $ = (id) => document.getElementById(id);
+  const money = (v) => { const s = v.replace(/\s|\./g, "").replace(",", "."); if (!/^\d+(\.\d{1,2})?$/.test(s)) throw new Error("Enter an amount, for example 95.000.000"); return core.fromMinor(core.toMinor(s)); };
+  const fmt = (s) => { const [i, f] = s.split("."); return BigInt(i).toLocaleString("id-ID") + "," + f; };
+  let broken = false;
+  function run() {
+    $("d-err").textContent = "";
+    $("d-cost-wrap").hidden = $("d-kind").value !== "sale";
+    let dpp, cost;
+    try { dpp = money($("d-dpp").value); cost = $("d-kind").value === "sale" ? money($("d-cost").value || "0") : "0.00"; }
+    catch (e) { $("d-err").textContent = e.message; return; }
+    const ppn = $("d-pkp").checked ? core.percentOf(dpp, 12n * 11n, 100n * 12n) : "0.00";
+    const total = core.fromMinor(core.toMinor(dpp) + core.toMinor(ppn));
+    const head = { idempotency_key: "demo", source_type: "sales_invoice", source_id: "demo", posting_date: "2026-01-15", document_date: "2026-01-15", created_by: 1 };
+    const sale = $("d-kind").value === "sale"
+      ? core.buildEntry({ event_type: "sale_invoice", amounts: { receivable: total, sales: dpp, tax_output_ppn: ppn }, ...head }, defaults)
+      : core.buildEntry({ event_type: "service_invoice", amounts: { receivable: total, service_revenue: dpp, tax_output_ppn: ppn }, ...head }, defaults);
+    if (!sale.ok) { $("d-err").textContent = sale.errors.join("; "); return; }
+    const entry = sale.entry;
+    if (broken) entry.lines[0] = { ...entry.lines[0], debit: core.fromMinor(core.toMinor(entry.lines[0].debit) + 1n) };
+    const lines = [...entry.lines];
+    if (core.toMinor(cost) > 0n) {
+      const c = core.buildEntry({ event_type: "sale_cogs", amounts: { cogs: cost, inventory: cost }, ...head, idempotency_key: "demo:cogs" }, defaults);
+      if (c.ok) lines.push(...c.entry.lines);
+    }
+    const v = core.validateEntry(entry, ctx);
+    let dr = 0n, cr = 0n;
+    $("d-lines").innerHTML = lines.map((l) => {
+      const d = core.toMinor(l.debit), c = core.toMinor(l.credit); dr += d; cr += c;
+      return `<tr${d ? "" : ' class="cr"'}><td>${l.account} ${names[l.account]}</td><td class="num">${d ? fmt(l.debit) : ""}</td><td class="num">${c ? fmt(l.credit) : ""}</td></tr>`;
+    }).join("");
+    $("d-dr").textContent = fmt(core.fromMinor(dr)); $("d-cr").textContent = fmt(core.fromMinor(cr));
+    $("d-badge").className = "badge " + (v.ok ? "badge--ok" : "badge--bad");
+    $("d-badge").textContent = v.ok ? "Balanced" : "Refused";
+    $("d-why").textContent = v.ok ? `validateEntry accepted it${core.toMinor(cost) > 0n ? ", and the cost of sales posts as a second entry" : ""}.` : `validateEntry: ${v.errors.join("; ")}`;
+    $("d-break").textContent = broken ? "Put it back" : "Change one line by Rp1";
+  }
+  $("demo").addEventListener("input", run);
+  $("demo").addEventListener("change", run);
+  $("d-break").addEventListener("click", () => { broken = !broken; run(); });
+  run();
+  window.__site = { core };
+</script>
+</body>
+</html>

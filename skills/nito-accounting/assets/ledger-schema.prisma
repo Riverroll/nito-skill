@@ -114,6 +114,8 @@ model T_L_ACC_JOURNAL_ENTRY {
   /// one per posting request, so a retry cannot post twice
   idempotency_key   String         @db.VarChar(80)
   reverses_entry_id BigInt?
+  /// for receivable and payable entries: what the aging report reads
+  due_date          DateTime?      @db.Date
   created_by        Int
   approved_by       Int?
   posted_at         DateTime?      @db.Timestamp(0)
@@ -146,12 +148,180 @@ model T_L_ACC_JOURNAL_LINE {
   cost_center_id  Int?
   site_id         Int?
   project_id      Int?
+  /// the operational object the line belongs to in the ERP that posted it:
+  /// a voyage number, a shipment, a work order. Reports group by it.
+  analytic_ref    String? @db.VarChar(40)
   description     String? @db.VarChar(255)
 
   entry   T_L_ACC_JOURNAL_ENTRY @relation(fields: [entry_id], references: [entry_id])
   account T_M_ACC_ACCOUNT       @relation(fields: [account_id], references: [account_id])
+  debit_allocations  T_L_ACC_ALLOCATION[] @relation("alloc_debit")
+  credit_allocations T_L_ACC_ALLOCATION[] @relation("alloc_credit")
+  recon              T_L_ACC_BANK_RECON?
 
   @@unique([entry_id, line_no], map: "uq_acc_line_no")
   @@index([account_id], map: "ix_acc_line_account")
   @@index([party_type, party_id], map: "ix_acc_line_party")
+  @@index([analytic_ref], map: "ix_acc_line_analytic")
+}
+
+// ---------------------------------------------------------------------------
+// Beyond the ledger: what a working ERP needs around it. Same conventions.
+
+enum AccCashbankKind {
+  bank
+  cash
+}
+
+/// Payment journals: one per bank account or cash box, each numbered on its
+/// own. Registering a payment picks one; its account fills the "bank" role.
+model T_M_ACC_CASHBANK {
+  cashbank_id    Int             @id @default(autoincrement())
+  company_id     Int
+  journal_code   String          @db.VarChar(10)
+  name           String          @db.VarChar(100)
+  kind           AccCashbankKind
+  account_id     Int
+  bank_name      String?         @db.VarChar(100)
+  account_number String?         @db.VarChar(40)
+  currency_code  String          @default("IDR") @db.Char(3)
+  is_active      Boolean         @default(true)
+
+  statements T_L_ACC_BANK_STATEMENT[]
+
+  @@unique([company_id, journal_code], map: "uq_acc_cashbank_journal")
+}
+
+enum AccTaxKind {
+  output
+  input
+  withholding_prepaid
+  withholding_payable
+  final
+}
+
+/// Effective-dated tax codes. A rate is num/den so 12% x 11/12 is exact
+/// (132/1200). Never hard-code a rate; values-to-verify.md says which rows are
+/// settled. role_key is the account-determination key the amount posts to.
+model T_M_ACC_TAX_CODE {
+  tax_code_id    Int        @id @default(autoincrement())
+  company_id     Int
+  code           String     @db.VarChar(20)
+  kind           AccTaxKind
+  rate_num       Int
+  rate_den       Int
+  role_key       String     @db.VarChar(50)
+  effective_from DateTime   @db.Date
+  effective_to   DateTime?  @db.Date
+  legal_basis    String?    @db.VarChar(150)
+  /// verified, secondary, unverified: copied from values-to-verify.md
+  status         String     @db.VarChar(20)
+
+  @@unique([company_id, code, effective_from], map: "uq_acc_tax_code")
+}
+
+/// A payment matched to an invoice on a control account, in part or whole.
+/// Open items are the control-account lines less their allocations, so the
+/// subledger always ties to the GL (rule 8). Undoing a match sets undone_at;
+/// the row stays.
+model T_L_ACC_ALLOCATION {
+  allocation_id  BigInt    @id @default(autoincrement())
+  company_id     Int
+  debit_line_id  BigInt
+  credit_line_id BigInt
+  amount         Decimal   @db.Decimal(18, 2)
+  allocated_at   DateTime  @default(now()) @db.Timestamp(0)
+  allocated_by   Int
+  undone_at      DateTime? @db.Timestamp(0)
+
+  debit_line  T_L_ACC_JOURNAL_LINE @relation("alloc_debit", fields: [debit_line_id], references: [line_id])
+  credit_line T_L_ACC_JOURNAL_LINE @relation("alloc_credit", fields: [credit_line_id], references: [line_id])
+
+  @@index([debit_line_id], map: "ix_acc_alloc_debit")
+  @@index([credit_line_id], map: "ix_acc_alloc_credit")
+}
+
+model T_L_ACC_BANK_STATEMENT {
+  statement_id    BigInt   @id @default(autoincrement())
+  cashbank_id     Int
+  statement_date  DateTime @db.Date
+  closing_balance Decimal  @db.Decimal(18, 2)
+  created_by      Int
+  created_at      DateTime @default(now()) @db.Timestamp(0)
+
+  cashbank T_M_ACC_CASHBANK     @relation(fields: [cashbank_id], references: [cashbank_id])
+  matches  T_L_ACC_BANK_RECON[]
+
+  @@unique([cashbank_id, statement_date], map: "uq_acc_statement")
+}
+
+/// A ledger line matched to a bank statement. A record beside the ledger: the
+/// posted line itself is never touched.
+model T_L_ACC_BANK_RECON {
+  line_id      BigInt   @id
+  statement_id BigInt
+  matched_by   Int
+  matched_at   DateTime @default(now()) @db.Timestamp(0)
+
+  line      T_L_ACC_JOURNAL_LINE   @relation(fields: [line_id], references: [line_id])
+  statement T_L_ACC_BANK_STATEMENT @relation(fields: [statement_id], references: [statement_id])
+}
+
+enum AccRequestStatus {
+  pending
+  posted
+  failed
+}
+
+/// The outbox between a module and the ledger. The module writes this row in
+/// its own transaction, next to its own document; a worker posts it. A crash
+/// in between loses nothing and posts nothing twice (idempotency_key).
+model T_L_ACC_POSTING_REQUEST {
+  request_id      BigInt           @id @default(autoincrement())
+  company_id      Int
+  idempotency_key String           @db.VarChar(80)
+  event_type      String           @db.VarChar(50)
+  source_type     String           @db.VarChar(40)
+  source_id       String           @db.VarChar(40)
+  /// the posting request as JSON: amounts by role, dates, party, dimensions
+  payload         String           @db.LongText
+  status          AccRequestStatus @default(pending)
+  attempts        Int              @default(0)
+  last_error      String?          @db.Text
+  entry_id        BigInt?
+  created_at      DateTime         @default(now()) @db.Timestamp(0)
+  posted_at       DateTime?        @db.Timestamp(0)
+
+  @@unique([company_id, idempotency_key], map: "uq_acc_request_idem")
+  @@index([status, created_at], map: "ix_acc_request_queue")
+}
+
+enum AccAssetStatus {
+  active
+  disposed
+  cancelled
+}
+
+/// The fixed-asset register; cost and accumulated depreciation by class must
+/// equal the GL (rule 8). fiscal_group is the tax depreciation group, kept
+/// beside the book life because the two differ (F2).
+model T_M_ACC_FIXED_ASSET {
+  asset_id           Int            @id @default(autoincrement())
+  company_id         Int
+  asset_code         String         @db.VarChar(30)
+  name               String         @db.VarChar(150)
+  asset_class        String         @db.VarChar(50)
+  acquisition_date   DateTime       @db.Date
+  cost               Decimal        @db.Decimal(18, 2)
+  residual_value     Decimal        @default(0) @db.Decimal(18, 2)
+  useful_life_months Int
+  fiscal_group       String?        @db.VarChar(20)
+  asset_account_id   Int
+  accum_account_id   Int
+  expense_account_id Int
+  status             AccAssetStatus @default(active)
+  disposal_date      DateTime?      @db.Date
+  source_entry_id    BigInt?
+
+  @@unique([company_id, asset_code], map: "uq_acc_asset_code")
 }

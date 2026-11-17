@@ -17,6 +17,21 @@ marketing page, product page, landing page, hero, feature grid or comparison
 table, or whenever you ask for something to look "like Apple", "premium" or
 "high-end" — you don't have to invoke it by name.
 
+The plugin carries a second skill, **nito-accounting**: the accounting an ERP
+needs, Indonesian context included, as knowledge and as a tested build kit.
+It answers accounting questions directly (journal entries, COA, GL, AR, AP,
+PPN, PPh, payroll, close), and it builds accounting into an ERP from zero
+without new research: a step-by-step guide, a schema for MariaDB/MySQL, a
+posting core with 61 events each replayed from a worked entry, a posting
+service with an outbox, the statements and cash flow, closing, FX
+revaluation, inventory valuation, and the dashboard figures. An integration
+playbook and domain maps connect any module to the ledger, from a CRM that
+only issues invoices to supply chain and voyage and shipping. A primer in
+Bahasa Indonesia onboards the team. The ledger logic stays the same in every
+ERP; the chart and the company configuration change.
+See [The showcase ledger](#the-showcase-ledger) for both skills working on one
+screen.
+
 ## Where the numbers come from
 
 Every value is extracted from apple.com's own shipped stylesheets, not
@@ -65,6 +80,20 @@ skills/nito-design/
   references/voice.md          how Apple writes headlines — read before writing copy
   assets/apple-base.css        tokens and primitives for a NEW page (placeholder palette — replace it)
   assets/type-scale.json       all 106 measured typography classes
+skills/nito-accounting/
+  SKILL.md                     nine rules, and which file answers which question
+  references/                  build-from-zero, integration playbook, event catalogue, domains/
+                               (CRM, supply chain, voyage, others), 15 topic files, 121 worked
+                               entries, SQL checks, team primer (Bahasa Indonesia), values to re-verify
+  assets/posting-core.mjs      the rules and 61 events
+  assets/posting-service.mjs   post, reverse, outbox worker; in-memory and MySQL repositories
+  assets/reports.mjs           statements, cash flow, open items, aging, dashboard, margin per voyage
+  assets/period-close.mjs      year-end closing, opening balances, FX revaluation
+  assets/inventory-valuation.mjs  moving average and FIFO
+  assets/seed-sql.mjs          setup SQL for a company
+  assets/ledger-schema.prisma  the ledger and the tables around it, for MariaDB/MySQL
+  assets/coa-template-id.json  default Indonesian chart, 29 accounts (constructed, adapt it)
+example/ledger/                the showcase: an accounting ERP built on both skills
 ```
 
 ## Audit an existing page
@@ -306,6 +335,53 @@ The photographs are public domain USGS and NPS frames; the product, its
 numbers and the morning itself are fiction, and the page says so above the
 credits.
 
+## The landing page
+
+`index.html` at the repo root is the landing page for the plugin: what both
+skills do, shown with what they made. It is built with nito-design's
+marketing mode on `apple-base.css`, with its own accent. Its pictures are
+captures of the pages in `example/`, including a clip of the showcase ledger
+posting an invoice, and its journal demo runs the real posting core in the
+page. Serve the repo and open `/`. On GitHub Pages it publishes from the repo
+root of `main` with no build step.
+
+## The showcase ledger
+
+`example/ledger/index.html` is a working accounting ERP for an invented company,
+built on both skills. Serve the repo and open it:
+
+```sh
+python3 -m http.server 4100   # then http://localhost:4100/example/ledger/
+```
+
+**The accounting** is nito-accounting's posting core, imported unchanged from
+`skills/nito-accounting/assets/posting-core.mjs`. Sales, purchases, receipts,
+payments, fixed assets, depreciation, the PPN settlement and tax payments are
+documents that send amounts by role; the core turns them into balanced
+entries, and the company's account determination picks the accounts. Each
+cash and bank account (Kas, Bank BCA, Bank Mandiri) is a payment journal with
+its own numbers: register a payment from the invoice, pick where the money
+went, record the method, the bank's reference, a fee or a part payment.
+Transfers between accounts, other cash lines (interest, charges) and a bank
+reconciliation against the statement are on the Kas dan bank page. Manual
+journals need a second user to approve them. Posted entries are never edited:
+cancelling a document posts a reversing entry and both stay. Closed periods,
+inactive accounts, manual postings to control accounts, unbalanced entries and
+roles with no account are refused, and the screen shows the core's own reason.
+The example data is the worked entries from the references (A1, A2, P1, P2,
+F1, F2), posted through the same commands the forms use, and the dashboard
+checks every subledger against its control account.
+
+**The design** is nito-design's dense-tool mode from `references/erp.md`: one
+row height, a 14px data ladder, sticky headers and a pinned identity column,
+right-aligned tabular numbers, tinted status badges that carry a word, one
+inspector column instead of modals, light and dark, and a phone layout. The
+ERP audit reports nothing on it.
+
+Data lives in the browser's localStorage. It is a showcase, not a product: it
+has no server, no login and no multi-company switch, and it does not cover
+inventory valuation, payroll or the year-end closing entry.
+
 ## Testing
 
 The suite asserts a page built with the skill against Apple's own shipped
@@ -319,10 +395,12 @@ node test/erp.mjs                       # the dense-tool pair, self-contained
 node test/composition.mjs               # the soul pair, self-contained
 node test/media.mjs                     # the clip ladder, the stack, the fallbacks
 node test/gallery.mjs                   # the carousel: paddles, dots, keyboard
-node test/accounting.mjs                # nito-accounting: refs resolve, every worked journal entry balances
+node test/accounting.mjs                # nito-accounting: refs resolve, every worked entry balances, every event replays
+node test/ledger.mjs                    # the showcase ledger in a real browser: data ties out, rules refused, ERP audit clean
+node test/site.mjs                      # the landing page: links, live journal, reduced motion, audit, and the counts it quotes
 ```
 
-357 checks across the seven. `test/media.mjs` is the widest of them: it reads
+`test/media.mjs` is the widest of the design suites: it reads
 the six clip files off disk (moov before mdat, no audio track, inside the byte
 budget, three crops at three aspect ratios), then drives a real browser through
 the markup as parsed, the source the loader picks at 1440px, at 2&times; and at
