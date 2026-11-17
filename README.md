@@ -322,6 +322,16 @@ The photographs are public domain USGS and NPS frames; the product, its
 numbers and the morning itself are fiction, and the page says so above the
 credits.
 
+## The landing page
+
+`index.html` at the repo root is the landing page for the plugin: what both
+skills do, shown with what they made. It is built with nito-design's
+marketing mode on `apple-base.css`, with its own accent. Its pictures are
+captures of the pages in `example/`, including a clip of the showcase ledger
+posting an invoice, and its journal demo runs the real posting core in the
+page. Serve the repo and open `/`. On GitHub Pages it publishes from the repo
+root of `main` with no build step.
+
 ## The showcase ledger
 
 `example/ledger/index.html` is a working accounting ERP for an invented company,
@@ -369,6 +379,7 @@ node test/media.mjs                     # the clip ladder, the stack, the fallba
 node test/gallery.mjs                   # the carousel: paddles, dots, keyboard
 node test/accounting.mjs                # nito-accounting: refs resolve, every worked entry balances, every event replays
 node test/ledger.mjs                    # the showcase ledger in a real browser: data ties out, rules refused, ERP audit clean
+node test/site.mjs                      # the landing page: links, live journal, reduced motion, audit, and the counts it quotes
 ```
 
 `test/media.mjs` is the widest of the design suites: it reads

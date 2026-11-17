@@ -81,6 +81,24 @@ up to 407 KB at 2&times;. That is the bits-per-pixel table in
 photograph is texture. It is also the right trade. A page that alternates
 photographs with flat dark panels reads as two pages interleaved.
 
+## The landing page's pictures in `example/media/site/`
+
+`index.html` at the repo root shows only what the two skills made. Every file
+here is a capture of a page in this repository, taken in headless Chrome at
+2&times; and re-encoded to WebP or H.264. Nothing is generated and nothing is
+from outside the repository except the one photograph inside the Ridge
+capture.
+
+| File | What it captures | Licence |
+|---|---|---|
+| `ledger-dash-light.webp`, `ledger-dash-light-1000.webp` | `example/ledger/`, the dashboard, light | MIT, this repository |
+| `ledger-report-dark.webp`, `ledger-report-dark-1000.webp` | `example/ledger/#laporan`, the statements, dark | MIT, this repository |
+| `ledger-post-large.mp4`, `ledger-post-small.mp4` | `example/ledger/#penjualan`, a service invoice typed and posted, one screenshot per step at 10 frames a second | MIT, this repository |
+| `ledger-post-start-2160.webp`, `ledger-post-start-1080.webp` | the clip's first frame, under the clip | MIT, this repository |
+| `ledger-post-end-2160.webp`, `ledger-post-end-1080.webp` | the clip's last frame, for reduced motion and no JS | MIT, this repository |
+| `erp-before.webp`, `erp-before-1000.webp`, `erp-after.webp`, `erp-after-1000.webp` | `example/erp/before.html` and `after.html` | MIT, this repository |
+| `ridge.webp`, `ridge-1000.webp` | `example/index.html`, the hero, which contains `hero-2400.webp`: [Kilauea Lava Lake (12792432484)](https://commons.wikimedia.org/wiki/File:Kilauea_Lava_Lake_(12792432484).jpg), U.S. Geological Survey | Public domain photograph, MIT page |
+
 ## Why these and not stock photography
 
 `references/imagery.md` records what was actually reachable when this page was
