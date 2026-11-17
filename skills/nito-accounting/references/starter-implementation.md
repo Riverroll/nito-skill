@@ -213,9 +213,9 @@ transaction show the shape of the service a real ERP puts around the core.
 
 - Running it against a database: the MySQL repository and the SQL have not
   been run during the research. `sql-checks.md` has what to run first.
-- Payroll calculation (gross to net, TER, BPJS caps) and tax filing exports
-  (Coretax, e-Bupot). The postings exist (`payroll_*`, tax events); the
-  calculations and file formats are not built, and several payroll rates are
-  unresolved in `values-to-verify.md`.
+- Tax filing exports (Coretax, e-Bupot). The postings exist; the file
+  formats are not built. Payroll calculation is in `assets/payroll-calc.mjs`
+  (`payroll.md`), but several of its parameters are unresolved in
+  `values-to-verify.md`: confirm them and edit the parameters.
 - Screens. For ledger and data-entry screens use the `nito-design` skill's
   dense-tool mode; `example/ledger/` shows them.

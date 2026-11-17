@@ -4,7 +4,7 @@
 
 ## Values to re-verify, dated 16 November 2026
 
-This is the single table of rates, caps, thresholds, deadlines and effective dates that change over time or were not settled. The "As of" column is the date of the evidence, and a status other than "verified" means the figure must not be treated as settled fact. The skill's `assets/params-dated.json` should carry exactly these rows with effective dates.
+This is the single table of rates, caps, thresholds, deadlines and effective dates that change over time or were not settled. The "As of" column is the date of the evidence, and a status other than "verified" means the figure must not be treated as settled fact. The payroll rows are carried, with these statuses, in `assets/payroll-params-id.json` (TER tables copied from the DJP deck); the tax rows belong in `T_M_ACC_TAX_CODE`. Change a value there, never in code.
 
 | Item | Latest value found | Source and date | Status |
 |---|---|---|---|

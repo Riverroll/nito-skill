@@ -708,7 +708,22 @@ function saveCompany(f) {
   if (!Number.isInteger(term) || term < 0) throw new FieldErr("term_days", "Isi jumlah hari, angka bulat");
   return tx(() => { Object.assign(state.company, { name, pkp: f.pkp === "on", term_days: term }); return { ok: true, flash: "Konfigurasi perusahaan disimpan." }; });
 }
+// A new rate is a new effective-dated row; the old row stays, so earlier documents keep their rate.
+function addTaxRate(f) {
+  const code = f.code, from = dateField(f.from, "from"), rate = String(f.rate ?? "").trim().replace(",", ".");
+  if (!/^\d{1,3}(\.\d{1,4})?$/.test(rate) || Number(rate) > 100) throw new FieldErr("rate", "Isi persen, contoh 11 atau 1,75");
+  if (state.tax.some((t) => t.code === code && t.from === from)) throw new FieldErr("from", `${code} sudah punya tarif yang berlaku ${dfmt(from)}`);
+  const [i, d = ""] = rate.split(".");
+  const source = (f.source ?? "").trim();
+  if (!source) throw new FieldErr("source", "Isi dasar hukum atau sumbernya");
+  return tx(() => {
+    state.tax.push({ code, from, num: String(BigInt(i + d)), den: String(100n * 10n ** BigInt(d.length)),
+      label: `${rate.replace(".", ",")}% (diubah manual)`, source, status: "Diisi manual, belum diverifikasi" });
+    return { ok: true, flash: `Tarif ${code} ${rate.replace(".", ",")}% berlaku mulai ${dfmt(from)}. Dokumen sebelum tanggal itu tetap memakai tarif lama.` };
+  });
+}
 const H = {
+  taxrate: addTaxRate,
   sale: submitSale, purchase: submitPurchase, asset: submitAsset,
   receipt: (f) => settle(f, "receipt"), payment: (f) => settle(f, "payment"),
   depreciation: runDepreciation, ppn: settlePPN, taxpay: payTax,
@@ -1130,8 +1145,12 @@ function vConfig() {
   const reset = form("reset", "Data contoh", `<p class="meta">Data tersimpan hanya di peramban ini. Muat ulang mengganti semua transaksi dengan contoh awal.</p>`, "Muat ulang data contoh", { confirm: "Klik lagi untuk menghapus semua data" });
   const tax = table([{ h: "Pajak" }, { h: "Berlaku" }, { h: "Dasar", cls: "trunc" }, { h: "Sumber", cls: "trunc" }, { h: "Status", cls: "trunc" }],
     state.tax.map((t) => ({ cells: [t.code, dfmt(t.from), esc(t.label), esc(t.source), esc(t.status)] })));
+  const codes = [...new Set(state.tax.map((t) => t.code))];
+  const taxForm = form("taxrate", "Tarif pajak baru", `<p class="meta">Tarif lama tidak diubah: tambahkan tarif dengan tanggal berlaku baru. Dokumen sebelum tanggal itu tetap memakai tarif lama.</p>
+      <div class="row2">${fld("taxrate", "code", "Pajak", sel("taxrate", "code", codes.map((c) => [c, c]), codes[0]))}${fld("taxrate", "from", "Berlaku mulai *", inp("taxrate", "from", "", 'type="date"'))}</div>
+      <div class="row2">${fld("taxrate", "rate", "Tarif efektif (%) *", inp("taxrate", "rate", "", 'inputmode="decimal"'))}${fld("taxrate", "source", "Dasar hukum *", inp("taxrate", "source"))}</div>`, "Tambah tarif");
   return { sub: "Yang berbeda per perusahaan adalah data, bukan kode", body: split(
-    block("Parameter pajak berlaku-tanggal", tax, `<span class="meta">Dari values-to-verify.md di skill. Cek ulang ke regulasi terbaru sebelum dipakai.</span>`) + company + reset, roles) };
+    block("Parameter pajak berlaku-tanggal", tax, `<span class="meta">Dari values-to-verify.md di skill. Cek ulang ke regulasi terbaru sebelum dipakai.</span>`) + taxForm + company + reset, roles) };
 }
 const VIEWS = {
   dasbor: ["Ringkasan", "Dasbor", vDash],

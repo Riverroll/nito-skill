@@ -492,7 +492,45 @@ ok("schema: money columns are DECIMAL(18, 2), never Float", /debit\s+Decimal .*@
 ok("schema: idempotency key is unique per company", /@@unique\(\[company_id, idempotency_key\]/.test(prisma));
 ok("schema: entry number is unique per journal", /@@unique\(\[company_id, journal_code, entry_number\]/.test(prisma));
 ok("schema: account types match the chart template", [...TYPES].every((t) => new RegExp(`^  ${t}$`, "m").test(prisma)));
+ok("schema: model T_M_ACC_PAYROLL_PARAM exists, one row per key per date", /^model T_M_ACC_PAYROLL_PARAM \{/m.test(prisma) && /@@unique\(\[company_id, param_key, effective_from\]/.test(prisma));
 
+// ---- payroll: recompute the worked payroll in payroll.md from the parameters ----
+const pay = await import(join(skill, "assets", "payroll-calc.mjs"));
+const pfile = JSON.parse(readFileSync(join(skill, "assets", "payroll-params-id.json"), "utf8"));
+const pp = pay.resolveParams(pfile.sets, "2026-01-31");
+const py = pay.monthlyPayroll({ ptkp_status: "TK/0", wage: "8000000.00" }, pp);
+ok("payroll: employer BPJS 819,200 (PY1)", py.employer.total === "819200.00", py.employer.total);
+ok("payroll: employee BPJS 320,000", py.employee.total === "320000.00", py.employee.total);
+ok("payroll: TER gross 8,363,200, category A", py.gross_taxable === "8363200.00" && py.ter_category === "A", py.gross_taxable);
+ok("payroll: PPh 21 125,448 at 1.5%", py.pph21 === "125448.00" && py.ter_rate === "1.5", `${py.pph21} ${py.ter_rate}`);
+ok("payroll: net 7,554,552", py.net === "7554552.00", py.net);
+const acc = pay.accrualAmounts([py]);
+ok("payroll: accrual amounts are PY1", JSON.stringify(acc) === JSON.stringify({ salary_expense: "8000000.00", employer_bpjs_expense: "819200.00",
+  payroll_payable: "7554552.00", bpjs_employment_payable: "739200.00", bpjs_health_payable: "400000.00", wht_payable_21: "125448.00" }), JSON.stringify(acc));
+ok("payroll: the accrual posts and balances", post("payroll_accrual", acc, 900).ok);
+const ann = pay.annualPph21({ ptkp_status: "TK/0", gross_year: "100358400.00", pension_year: "2880000.00", withheld: "1379928.00" }, pp);
+ok("payroll: December PKP 38,460,000, tax 1,923,000, due 543,072 (PY5)", ann.pkp === "38460000.00" && ann.tax_year === "1923000.00" && ann.due === "543072.00", JSON.stringify(ann));
+ok("payroll: over-withholding gives a negative due", pay.annualPph21({ ptkp_status: "K/3", gross_year: "60000000.00", pension_year: "0", withheld: "500000.00" }, pp).due.startsWith("-"));
+ok("payroll: Pasal 17 crosses brackets (PKP 300m = 3m + 28.5m + 12.5m)", pay.annualPph21({ ptkp_status: "TK/0", gross_year: "360000000.00", pension_year: "0", withheld: "0" }, pp).tax_year === "44000000.00");
+ok("payroll: JP and health stop at their caps", (() => { const r = pay.monthlyPayroll({ ptkp_status: "K/1", wage: "50000000.00" }, pp);
+  return r.employee.jp === pay.monthlyPayroll({ ptkp_status: "K/1", wage: "20000000.00" }, pp).employee.jp && r.employee.kes === "120000.00"; })());
+ok("payroll: a later set changes only its keys", (() => { const later = pay.resolveParams([...pfile.sets, { effective_from: "2026-03-01", bpjs: { jp_cap: "11086300" } }], "2026-03-31");
+  return later.bpjs.jp_cap === "11086300" && later.bpjs.jht_er === pp.bpjs.jht_er && pay.resolveParams(pfile.sets, "2026-03-31").bpjs.jp_cap === pp.bpjs.jp_cap; })());
+ok("payroll: DB rows give the same parameters", JSON.stringify(pay.resolveParams(pay.setsFromRows(pfile.sets.flatMap(({ effective_from, ...s }) =>
+  Object.entries(s).map(([k, v]) => ({ param_key: k, param_value: JSON.stringify(v), effective_from })))), "2026-01-31")) === JSON.stringify(pp));
+for (const c of ["A", "B", "C"]) ok(`payroll: TER ${c} rises and ends open`, pp.ter[c].at(-1)[0] === null &&
+  pp.ter[c].every(([u, r], i, t) => i === 0 || (Number(r) >= Number(t[i - 1][1]) && (u === null || Number(u) > Number(t[i - 1][0])))));
+ok("payroll: TER bracket counts are 44, 40, 41 (DJP deck)", pp.ter.A.length === 44 && pp.ter.B.length === 40 && pp.ter.C.length === 41,
+  `${pp.ter.A.length}/${pp.ter.B.length}/${pp.ter.C.length}`);
+ok("payroll: every parameter carries a status", Object.keys(pfile.status ?? {}).length >= 8 && Object.values(pfile.status).every((s) => /^(verified|secondary|unverified|conflict)/.test(s)));
+// DJP deck on PMK 168/2023, page 28 (Tuan A, K/0): salary 10m, allowance 20m, JKK 0.5% and JKM 0.3% of salary
+const djp = { ...pp, ter_gross_includes: ["jkk", "jkm"] };
+const tuanA = (extra) => pay.monthlyPayroll({ ptkp_status: "K/0", wage: "10000000.00", variable_pay: extra, jkk_rate: "0.5" }, djp);
+ok("payroll: DJP example January, gross 30,080,000 at 13% = 3,910,400", tuanA("20000000.00").gross_taxable === "30080000.00" && tuanA("20000000.00").pph21 === "3910400.00", tuanA("20000000.00").pph21);
+ok("payroll: DJP example February with 5m overtime, 14% = 4,911,200", tuanA("25000000.00").pph21 === "4911200.00", tuanA("25000000.00").pph21);
+ok("payroll: DJP example July with 20m bonus, 18% = 9,014,400", tuanA("40000000.00").pph21 === "9014400.00", tuanA("40000000.00").pph21);
+let pyThrew = false; try { pay.monthlyPayroll({ ptkp_status: "X/9", wage: "1.00" }, pp); } catch { pyThrew = true; }
+ok("payroll: an unknown PTKP status is rejected", pyThrew);
 
 // ---- rates are never stated without the re-verify table ---------------------
 ok("values-to-verify.md carries a date", /\b20\d\d\b/.test(readFileSync(join(refs, "values-to-verify.md"), "utf8")));

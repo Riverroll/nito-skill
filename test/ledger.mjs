@@ -235,6 +235,29 @@ try {
   ok("the January BCA reconciliation shows no difference", rc.before === "Nol, cocok", rc.before);
   ok("unticking a matched line opens a difference", rc.after !== "Nol, cocok" && rc.after.length > 0, rc.after);
 
+  // ---- a tax rate changed by hand: a new dated row, old documents keep the old rate
+  await evaluate(`location.hash = "konfigurasi"`); await sleep(80);
+  const tr = await evaluate(`(async () => {
+    const submit = (id, v) => { document.querySelector('[data-act="close"]')?.click(); const f = document.querySelector('form[data-form="' + id + '"]');
+      for (const [k, x] of Object.entries(v)) f.elements[k].value = x; f.requestSubmit(); };
+    const rows = () => document.querySelectorAll("table")[0].querySelectorAll("tbody tr").length;
+    const before = rows();
+    submit("taxrate", { code: "PPN", from: "2026-12-01", rate: "12", source: "uji" });
+    await new Promise((r) => setTimeout(r, 50));
+    const after = rows();
+    submit("taxrate", { code: "PPN", from: "2026-12-01", rate: "13", source: "uji" });
+    await new Promise((r) => setTimeout(r, 50));
+    const dup = document.querySelector('form[data-form="taxrate"]').textContent.includes("sudah punya tarif");
+    location.hash = "penjualan"; await new Promise((r) => setTimeout(r, 80));
+    submit("sale", { kind: "service", date: "2026-11-15", dpp: "1.000.000" }); await new Promise((r) => setTimeout(r, 50));
+    submit("sale", { kind: "service", date: "2026-12-15", dpp: "1.000.000" }); await new Promise((r) => setTimeout(r, 50));
+    const docs = JSON.parse(localStorage.getItem("nito-ledger-v1")).docs.slice(-2).map((d) => d.ppn);
+    return { before, after, dup, docs };
+  })()`);
+  ok("a new tax rate adds a dated row", tr.after === tr.before + 1, JSON.stringify(tr));
+  ok("a second rate for the same tax and date is refused", tr.dup);
+  ok("invoices before the new date keep 11%, after it use 12%", JSON.stringify(tr.docs) === '["110000.00","120000.00"]', JSON.stringify(tr.docs));
+
   // ---- the statements on screen agree with each other
   await open(1440, "#laporan");
   const rep = await evaluate(`[...document.querySelectorAll(".badge")].map((b) => b.textContent).join()`);
