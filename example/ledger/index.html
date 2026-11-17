@@ -1,0 +1,1121 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nito Ledger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Dense-tool shell from nito-design references/erp.md: topbar 52, sidebar 240,
+   sticky toolbar, table plus one inspector column. One accent, four semantic hues. */
+:root{
+  --ink:#1d1d1f; --ink-secondary:#57575c; --ink-muted:#6e6e73;
+  --surface:#ffffff; --surface-alt:#f5f5f7; --hairline:#e3e3e7;
+  --accent:#0066cc; --on-accent:#ffffff;
+  --success:#116633; --warning:#92400e; --critical:#b91c1c; --neutral:#57575c;
+  --row-h:40px;
+  --radius-pill:980px; --radius-card:12px; --radius-tile:6px;
+  --dur-hover:80ms; --dur-state:150ms; --ease:cubic-bezier(.4,0,.6,1);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ink:#f5f5f7; --ink-secondary:#c7c7cc; --ink-muted:#a1a1a6;
+  --surface:#1c1c1e; --surface-alt:#2c2c2e; --hairline:#3a3a3c;
+  --accent:#2997ff; --on-accent:#000000;
+  --success:#4ade80; --warning:#fbbf24; --critical:#f87171; --neutral:#a1a1a6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --ink:#f5f5f7; --ink-secondary:#c7c7cc; --ink-muted:#a1a1a6;
+  --surface:#1c1c1e; --surface-alt:#2c2c2e; --hairline:#3a3a3c;
+  --accent:#2997ff; --on-accent:#000000;
+  --success:#4ade80; --warning:#fbbf24; --critical:#f87171; --neutral:#a1a1a6; color-scheme:dark}
+[data-density="compact"]{--row-h:32px}
+[data-density="comfortable"]{--row-h:48px}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface);color:var(--ink);font-family:var(--font);
+  font-size:14px;line-height:1.2857742857;letter-spacing:-0.016em}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select{font:inherit;letter-spacing:inherit;color:inherit}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:inherit}
+h1,h2,h3,p{margin:0}
+.meta{font-size:12px;line-height:1.3333733333;letter-spacing:-0.01em;color:var(--ink-muted)}
+
+.app{display:grid;grid-template-columns:240px minmax(0,1fr);grid-template-rows:52px minmax(0,1fr);min-height:100vh}
+.top{grid-column:1/-1;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--hairline);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{font-weight:600;white-space:nowrap}
+.brand .meta{font-weight:400;margin-left:8px}
+.top .grow{flex:1}
+.top label{display:flex;align-items:center;gap:8px}
+.top select{height:32px;padding:0 8px;border:1px solid var(--hairline);border-radius:var(--radius-tile);background:var(--surface)}
+
+.side{background:var(--surface-alt);border-right:1px solid var(--hairline);padding-block:16px;
+  padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:12px}
+.side h2{font-size:12px;line-height:1.3333733333;letter-spacing:-0.01em;font-weight:600;color:var(--ink-muted);padding:16px 8px 4px}
+.side h2:first-child{padding-top:0}
+.side ul{list-style:none;margin:0;padding:0}
+.side a{display:block;height:32px;line-height:32px;padding:0 8px;border-radius:var(--radius-tile);color:var(--ink-secondary);white-space:nowrap}
+.side a:hover{text-decoration:none;background:var(--hairline);transition:background var(--dur-hover) var(--ease)}
+.side a[aria-current="page"]{color:var(--accent);font-weight:600;background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+
+main{min-width:0}
+.toolbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--hairline);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:16px;padding-left:24px;padding-right:max(24px,env(safe-area-inset-right,0px))}
+.toolbar>div:first-child{flex:1;min-width:0}
+h1{font-size:28px;line-height:1.142854;font-weight:600}
+.toolbar .meta{margin-top:4px}
+.content{padding-block:24px 32px;padding-left:24px;padding-right:max(24px,env(safe-area-inset-right,0px))}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.stmt .tw{max-height:none}
+.col{display:flex;flex-direction:column;gap:24px;min-width:0}
+.side-col{position:sticky;top:104px}
+h2{font-size:20px;line-height:1.2;font-weight:600}
+h3{font-size:14px;font-weight:600}
+.block{display:flex;flex-direction:column;gap:12px;min-width:0}
+.block-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpi{background:var(--surface-alt);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.kpi b{font-size:20px;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.tw{overflow:auto;max-height:70vh;border:1px solid var(--hairline);border-radius:var(--radius-card)}
+table{border-collapse:separate;border-spacing:0;width:100%}
+th,td{height:var(--row-h);padding:0 12px;text-align:left;white-space:nowrap;vertical-align:middle}
+thead th{position:sticky;top:0;z-index:2;background:var(--surface);font-weight:600;border-bottom:1px solid var(--hairline)}
+/* the identifying column stays put when a wide table scrolls sideways */
+thead th:first-child{left:0;z-index:3}
+tbody td:first-child,tfoot td:first-child{position:sticky;left:0;z-index:1}
+tbody tr+tr td{border-top:1px solid var(--hairline)}
+tbody td{background:var(--surface)}
+tfoot td{font-weight:600;border-top:1px solid var(--hairline);background:var(--surface)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.trunc{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.id{font-weight:600}
+tr[data-act]{cursor:pointer}
+tr[data-act]:hover td{background:var(--surface-alt);transition:background var(--dur-hover) var(--ease)}
+tr[aria-selected="true"] td{background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+tr[aria-selected="true"] td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+.neg{color:var(--critical)}
+.empty{padding:24px;color:var(--ink-secondary);border:1px dashed var(--hairline);border-radius:var(--radius-card)}
+
+.badge{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:var(--radius-pill);
+  font-size:12px;line-height:1;letter-spacing:-0.01em;font-weight:600;
+  background:color-mix(in srgb,var(--c) 12%,var(--surface));color:var(--c)}
+.badge[data-status="success"]{--c:var(--success)}
+.badge[data-status="warning"]{--c:var(--warning)}
+.badge[data-status="critical"]{--c:var(--critical)}
+.badge[data-status="neutral"]{--c:var(--neutral)}
+
+.panel{background:var(--surface-alt);border-radius:var(--radius-card);padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+form{display:flex;flex-direction:column;gap:16px;min-width:0}
+.fld{display:flex;flex-direction:column;gap:8px;min-width:0}
+.fld label{font-weight:600}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+input:not([type=checkbox]),select{height:var(--row-h);padding:0 12px;width:100%;min-width:0;
+  border:1px solid var(--hairline);border-radius:var(--radius-tile);background:var(--surface)}
+input[inputmode=decimal]{text-align:right;font-variant-numeric:tabular-nums}
+input[aria-invalid="true"]{border-color:var(--critical)}
+/* the box is drawn at 20px; the real input sits over it at 28px, the dense-tool minimum target */
+.check{position:relative;display:flex;align-items:center;gap:8px;min-height:28px;cursor:pointer}
+.check input{position:absolute;left:-4px;top:0;width:28px;height:28px;margin:0;opacity:0;cursor:pointer}
+.check .box{width:20px;height:20px;flex:none;display:grid;place-items:center;
+  border:1px solid var(--ink-muted);border-radius:var(--radius-tile);background:var(--surface)}
+.check input:checked+.box{background:var(--accent);border-color:var(--accent)}
+.check input:checked+.box::after{content:"";width:6px;height:10px;border:solid var(--on-accent);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+.check input:focus-visible+.box{outline:2px solid var(--accent);outline-offset:2px}
+.check input:disabled+.box{opacity:.4}
+.check:has(input:disabled){cursor:not-allowed;color:var(--ink-muted)}
+.block-head a{display:inline-flex;align-items:center;min-height:28px}
+.help{font-size:12px;line-height:1.3333733333;letter-spacing:-0.01em;color:var(--ink-muted)}
+.help.err{color:var(--critical)}
+.actions{display:flex;flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap}
+.toolbar select,.toolbar input{width:auto}
+.btn{height:var(--row-h);padding:0 16px;border:0;border-radius:var(--radius-pill);background:var(--accent);color:var(--on-accent);
+  font-weight:600;cursor:pointer;transition:filter var(--dur-state) var(--ease)}
+.btn:hover{filter:brightness(1.08)}
+.btn--ghost{background:var(--surface);color:var(--accent);border:1px solid var(--hairline)}
+.btn--danger{background:var(--critical);color:var(--surface)}
+.btn--sm{height:28px;padding:0 12px}
+.note{border-radius:var(--radius-tile);padding:12px;background:color-mix(in srgb,var(--c) 12%,var(--surface));display:flex;flex-direction:column;gap:4px}
+.note ul{margin:0;padding-left:16px}
+.note--ok{--c:var(--success)} .note--bad{--c:var(--critical)}
+.note strong{color:var(--c)}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;margin:0}
+dt{color:var(--ink-muted)} dd{margin:0;min-width:0;overflow-wrap:anywhere}
+dd.num{text-align:left}
+.lines td{height:32px}
+.lines .acct{max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.stmt td:first-child{padding-left:24px}
+.stmt tr.grp td{font-weight:600;padding-left:12px;color:var(--ink-secondary)}
+.stmt tr.tot td{font-weight:600}
+.statements{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+
+@media (max-width:1068px){
+  .split,.statements{grid-template-columns:minmax(0,1fr)}
+  .side-col{position:static}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}
+  .top{flex-wrap:wrap;padding-block:8px}
+  .side{border-right:0;border-bottom:1px solid var(--hairline);overflow-x:auto;padding-block:8px;
+    padding-right:max(16px,env(safe-area-inset-right,0px));padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .side h2{display:none}
+  .side nav{display:flex;gap:4px}
+  .side ul{display:flex;gap:4px}
+  .toolbar,.content{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .toolbar{flex-direction:column;align-items:stretch;gap:12px}
+  h1{font-size:20px;line-height:1.2}
+  .row2{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <p class="brand">Nito Ledger<span class="meta" id="company"></span></p>
+    <span class="badge" data-status="warning">Data contoh</span>
+    <span class="grow"></span>
+    <label class="meta" for="user">Pengguna
+      <select id="user"><option value="rina">Rina, pembuat</option><option value="budi">Budi, penyetuju</option></select></label>
+    <label class="meta" for="density">Kerapatan
+      <select id="density"><option value="compact">Rapat</option><option value="">Normal</option><option value="comfortable">Longgar</option></select></label>
+  </header>
+  <aside class="side"><nav id="nav" aria-label="Menu"></nav></aside>
+  <main id="main"><div class="content"><p class="meta">Memuat bagan akun…</p></div></main>
+</div>
+
+<script type="module">
+// Every posting below goes through the posting core shipped in the
+// nito-accounting skill, unchanged. This page only adds the documents, the
+// screens and the in-browser "database" (state + localStorage).
+import * as core from "../../skills/nito-accounting/assets/posting-core.mjs";
+const COA_URL = "../../skills/nito-accounting/assets/coa-template-id.json";
+const STORE = "nito-ledger-v1";
+document.documentElement.lang = "id";
+
+// ---------------------------------------------------------------- config
+const USERS = { rina: "Rina", budi: "Budi" };
+const JOURNALS = { PJ: "Penjualan", PB: "Pembelian", KM: "Kas masuk", KK: "Kas keluar", JU: "Umum" };
+const KINDS = {
+  sale:             { label: "Penjualan barang", journal: "PJ", prefix: "INV" },
+  service:          { label: "Penjualan jasa", journal: "PJ", prefix: "INV" },
+  receipt:          { label: "Penerimaan", journal: "KM", prefix: "RCV" },
+  purchase:         { label: "Pembelian barang", journal: "PB", prefix: "BILL" },
+  purchase_service: { label: "Pembelian jasa", journal: "PB", prefix: "BILL" },
+  asset:            { label: "Pembelian aset tetap", journal: "PB", prefix: "BILL" },
+  payment:          { label: "Pembayaran", journal: "KK", prefix: "PAY" },
+  ppn_settlement:   { label: "Kompensasi PPN", journal: "JU", prefix: "PPN" },
+  tax_payment:      { label: "Setoran pajak", journal: "KK", prefix: "SSP" },
+  depreciation:     { label: "Penyusutan", journal: "JU", prefix: "DEP" },
+};
+const AR_KINDS = ["sale", "service"], AP_KINDS = ["purchase", "purchase_service", "asset"];
+// The company adapts the skill's template: five accounts the template does not carry.
+const EXTRA_ACCOUNTS = [
+  { code: "1-1750", name: "PPN Lebih Bayar", type: "asset", normal_balance: "debit" },
+  { code: "2-1150", name: "Barang Diterima Belum Ditagih (GR/IR)", type: "liability", normal_balance: "credit" },
+  { code: "2-1410", name: "Utang PPN", type: "liability", normal_balance: "credit" },
+  { code: "6-1000", name: "Beban Jasa Profesional", type: "expense", normal_balance: "debit" },
+  { code: "6-2000", name: "Beban Penyusutan", type: "expense", normal_balance: "debit" },
+];
+// Account determination: role key -> account. The engine never reads a code.
+const ROLES = {
+  bank: ["Bank", "1-1200"], receivable: ["Piutang usaha", "1-1300"], payable: ["Utang usaha", "2-1100"],
+  sales: ["Penjualan barang", "4-1000"], service_revenue: ["Pendapatan jasa", "4-2000"],
+  tax_output_ppn: ["PPN Keluaran", "2-1400"], tax_input_ppn: ["PPN Masukan", "1-1700"],
+  ppn_payable: ["Utang PPN", "2-1410"], ppn_receivable: ["PPN Lebih Bayar", "1-1750"],
+  prepaid_tax_22_23_25: ["PPh dibayar di muka", "1-1800"], wht_payable_23: ["Utang PPh 23", "2-1510"],
+  cogs: ["HPP", "5-0000"], inventory: ["Persediaan", "1-1500"], stock_received_not_billed: ["GR/IR", "2-1150"],
+  service_expense: ["Beban jasa", "6-1000"], fixed_asset: ["Aset tetap", "1-2100"],
+  accumulated_depreciation: ["Akumulasi penyusutan", "1-2190"], depreciation_expense: ["Beban penyusutan", "6-2000"],
+};
+// Effective-dated tax parameters (nito-accounting references/values-to-verify.md).
+const TAX = [
+  { code: "PPN", from: "2025-01-01", num: "132", den: "1200", label: "12% x DPP nilai lain 11/12 (efektif 11%)",
+    source: "UU 7/2021 Pasal 7; PMK 131/2024", status: "Terverifikasi s.d. pertengahan 2026, cek ulang" },
+  { code: "PPh 23", from: "2009-01-01", num: "2", den: "100", label: "2% atas jasa, dari DPP",
+    source: "UU 36/2008 Pasal 23", status: "Teks 2008; dasar tanpa PPN belum terverifikasi" },
+];
+const TYPES = ["asset", "contra_asset", "liability", "equity", "contra_equity", "revenue", "contra_revenue", "expense", "temporary", "suspense"];
+const TYPE_ID = { asset: "Aset", contra_asset: "Kontra aset", liability: "Liabilitas", equity: "Ekuitas", contra_equity: "Kontra ekuitas",
+  revenue: "Pendapatan", contra_revenue: "Kontra pendapatan", expense: "Beban", temporary: "Sementara", suspense: "Penampung" };
+
+// ---------------------------------------------------------------- helpers
+let state, coa;
+const ui = { sel: null, flash: null, f: { asOf: "2026-12-31", from: "2026-01-01", to: "2026-12-31", account: "1-1200", jstatus: "", journal: "" } };
+const M = (s) => core.toMinor(s), S = (m) => core.fromMinor(m);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36);
+const txt = (m) => { const neg = m < 0n, [i, f] = S(neg ? -m : m).split("."); const t = BigInt(i).toLocaleString("id-ID") + "," + f; return neg ? `(${t})` : t; };
+const fmt = (m) => (m < 0n ? `<span class="neg">${txt(m)}</span>` : txt(m));
+const MON = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+const dfmt = (iso) => { const [y, m, d] = iso.split("-"); return `${d} ${MON[+m - 1]} ${y}`; };
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const lastDay = (ym) => { const [y, m] = ym.split("-").map(Number); return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`; };
+const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const defDate = () => { const t = today(); return t.startsWith(String(state.company.fiscal_year)) ? t : `${state.company.fiscal_year}-12-31`; };
+const role = (r) => state.defaults[r];
+const acct = (code) => state.accounts[code];
+const aname = (code) => (acct(code) ? `${code} ${acct(code).name}` : code);
+const party = (id) => [...state.customers, ...state.suppliers].find((p) => p.id === id)?.name ?? "";
+class FieldErr extends Error { constructor(field, msg) { super(msg); this.field = field; } }
+
+function money(raw, field, { zero = false } = {}) {
+  const s = String(raw ?? "").replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) throw new FieldErr(field, "Isi nominal, contoh 95.000.000 atau 1.250,50");
+  const v = S(M(s));
+  if (!zero && M(v) === 0n) throw new FieldErr(field, "Nominal harus lebih dari nol");
+  return v;
+}
+function dateField(v, field = "date") {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v ?? "")) throw new FieldErr(field, "Pilih tanggal");
+  return v;
+}
+function taxAmt(code, base, date) {
+  const p = state.tax.filter((t) => t.code === code && t.from <= date).sort((a, b) => b.from.localeCompare(a.from))[0];
+  if (!p) throw new Error(`Tidak ada tarif ${code} yang berlaku pada ${dfmt(date)}`);
+  return core.percentOf(base, BigInt(p.num), BigInt(p.den));
+}
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} }
+
+// ---------------------------------------------------------------- the "database"
+function fresh() {
+  const accounts = {};
+  for (const a of [...coa.accounts, ...EXTRA_ACCOUNTS])
+    accounts[a.code] = { code: a.code, name: a.name, type: a.type, normal_balance: a.normal_balance,
+      control: a.control ?? null, closing_only: !!a.zero_outside_closing, active: true, postable: true };
+  const periods = {};
+  for (let m = 1; m <= 12; m++) periods[`2026-${String(m).padStart(2, "0")}`] = "open";
+  return { v: 1, company: { name: "PT Contoh Niaga Nusantara", pkp: true, fiscal_year: 2026, term_days: 30 },
+    user: "rina", accounts, defaults: Object.fromEntries(Object.entries(ROLES).map(([k, [, c]]) => [k, c])),
+    periods, seq: {}, entries: [], docs: [], tax: TAX.map((t) => ({ ...t })),
+    customers: [{ id: "C1", name: "CV Mitra Sejahtera" }, { id: "C2", name: "PT Andalas Logistik" }, { id: "C3", name: "Toko Sinar Jaya" }],
+    suppliers: [{ id: "S1", name: "PT Sumber Makmur" }, { id: "S2", name: "KAP Rekan dan Mitra" }, { id: "S3", name: "PT Teknik Prima" }] };
+}
+
+// One database transaction: every change inside fn is undone if it fails,
+// including the numbering counters, so document and journal numbers stay gapless.
+function tx(fn) {
+  const snap = JSON.stringify(state);
+  let r;
+  try { r = fn(); } catch (e) { r = { ok: false, errors: [e.message], field: e.field }; }
+  if (!r?.ok) state = JSON.parse(snap); else save();
+  return r;
+}
+function nextNo(prefix, date) {
+  const y = date.slice(0, 4), k = `${prefix}-${y}`, n = state.seq[k] ?? 1;
+  state.seq[k] = n + 1;
+  return `${prefix}/${y}/${String(n).padStart(4, "0")}`;
+}
+function ctx() {
+  const accounts = {};
+  for (const a of Object.values(state.accounts)) accounts[a.code] = { active: a.active, postable: a.postable, control: !!a.control };
+  return { accounts, isPeriodOpen: (d) => state.periods[d.slice(0, 7)] === "open" };
+}
+// The posting transaction of references/starter-implementation.md, in memory:
+// idempotency check, validateEntry, take the next number, insert.
+function postEntry(entry, journal) {
+  const prev = state.entries.find((e) => e.idempotency_key === entry.idempotency_key && e.status !== "draft");
+  if (prev) return { ok: true, entry: prev, replay: true };
+  const v = core.validateEntry(entry, ctx());
+  if (!v.ok) return v;
+  const posted = { ...entry, journal, status: "posted", entry_number: nextNo(journal, entry.posting_date), total: v.total };
+  const i = state.entries.indexOf(entry);
+  if (i >= 0) state.entries[i] = posted; else state.entries.push(posted);
+  return { ok: true, entry: posted };
+}
+function postEvent(event_type, amounts, head) {
+  const clean = Object.fromEntries(Object.entries(amounts).filter(([, v]) => v && M(v) > 0n));
+  const b = core.buildEntry({ event_type, amounts: clean, ...head }, state.defaults);
+  if (!b.ok) return b;
+  for (const l of b.entry.lines) {
+    const c = acct(l.account)?.control;
+    if (c === "customer" || c === "supplier") l.party = head.party;
+  }
+  return postEntry(b.entry, head.journal);
+}
+// A module document: number it, post its events, keep the journal numbers on it.
+function makeDoc(kind, fields, postings) {
+  const prev = fields.token && state.docs.find((d) => d.token === fields.token && d.status === "open");
+  if (prev) return { ok: true, doc: prev, flash: `${prev.no} sudah diposting sebelumnya. Kirim ulang tidak membuat jurnal kedua.` };
+  const k = KINDS[kind], no = nextNo(k.prefix, fields.date);
+  const doc = { kind, no, status: "open", entries: [], ...fields };
+  const who = fields.party ? ` · ${party(fields.party)}` : "";
+  for (const [ev, amounts, suffix] of postings(doc)) {
+    const r = postEvent(ev, amounts, { idempotency_key: `${no}:${suffix}`, source_type: kind, source_id: no,
+      posting_date: fields.date, document_date: fields.date, created_by: state.user, journal: k.journal,
+      party: fields.party ?? undefined, description: `${k.label} ${no}${who}${fields.memo ? " · " + fields.memo : ""}` });
+    if (!r.ok) return r;
+    doc.entries.push(r.entry.entry_number);
+  }
+  state.docs.push(doc);
+  return { ok: true, doc, sel: { type: "doc", id: no }, flash: `${no} diposting sebagai ${doc.entries.join(" dan ")}.` };
+}
+function reverseInto(e, date, why) {
+  const rev = core.reverseEntry(e, { posting_date: date, idempotency_key: `${e.idempotency_key}:rev`, created_by: state.user });
+  rev.description = `${why} (membalik ${e.entry_number})`;
+  delete rev.total;
+  const r = postEntry(rev, e.journal);
+  if (!r.ok) return r;
+  e.status = "reversed"; e.reversed_by = r.entry.entry_number;
+  return r;
+}
+
+// ---------------------------------------------------------------- queries
+const live = () => state.entries.filter((e) => e.status !== "draft");
+const sorted = (list) => [...list].sort((a, b) => a.posting_date.localeCompare(b.posting_date) || String(a.entry_number).localeCompare(String(b.entry_number)));
+function bal(code, to, from) {
+  let m = 0n;
+  if (!code) return m;
+  for (const e of live()) {
+    if ((to && e.posting_date > to) || (from && e.posting_date < from)) continue;
+    for (const l of e.lines) if (l.account === code) m += M(l.debit) - M(l.credit);
+  }
+  return m;
+}
+const debitNormal = (a) => a.normal_balance === "debit" || (a.normal_balance === "either" && ["asset", "expense", "suspense"].includes(a.type));
+const natural = (a, m) => (debitNormal(a) ? m : -m);
+const applied = (no) => state.docs.filter((d) => d.status === "open" && d.ref === no && (d.kind === "receipt" || d.kind === "payment")).reduce((s, d) => s + M(d.amount), 0n);
+const openAmt = (d) => M(d.total) - applied(d.no);
+const arDocs = () => state.docs.filter((d) => AR_KINDS.includes(d.kind));
+const apDocs = () => state.docs.filter((d) => AP_KINDS.includes(d.kind));
+const sumOpen = (list) => list.filter((d) => d.status === "open").reduce((s, d) => s + openAmt(d), 0n);
+const fyStart = () => `${state.company.fiscal_year}-01-01`, fyEnd = () => `${state.company.fiscal_year}-12-31`;
+
+function pl(from, to) {
+  const g = { rev: [], cogs: [], opex: [], other: [] };
+  for (const a of Object.values(state.accounts).sort((x, y) => x.code.localeCompare(y.code))) {
+    const m = bal(a.code, to, from);
+    if (m === 0n || a.closing_only) continue;
+    if (a.type === "revenue" || a.type === "contra_revenue") g.rev.push([a, -m]);
+    else if (a.code === role("cogs")) g.cogs.push([a, m]);
+    else if (a.type === "expense") g.opex.push([a, m]);
+    else if (a.type === "temporary") g.other.push([a, -m]);
+  }
+  const t = (rows) => rows.reduce((s, [, v]) => s + v, 0n);
+  const gross = t(g.rev) - t(g.cogs);
+  return { ...g, tRev: t(g.rev), tCogs: t(g.cogs), gross, tOpex: t(g.opex), tOther: t(g.other), net: gross - t(g.opex) + t(g.other) };
+}
+function bs(to) {
+  const g = { a: [], l: [], e: [] };
+  for (const a of Object.values(state.accounts).sort((x, y) => x.code.localeCompare(y.code))) {
+    const m = bal(a.code, to);
+    if (m === 0n) continue;
+    if (["asset", "contra_asset", "suspense"].includes(a.type)) g.a.push([a, m]);
+    else if (a.type === "liability") g.l.push([a, -m]);
+    else if (a.type === "equity" || a.type === "contra_equity") g.e.push([a, -m]);
+  }
+  const profit = pl(fyStart(), to).net;
+  const t = (rows) => rows.reduce((s, [, v]) => s + v, 0n);
+  return { ...g, profit, tA: t(g.a), tL: t(g.l), tE: t(g.e) + profit };
+}
+// Rule 8 of the skill: every subledger equals its control account.
+function checks() {
+  const tb = core.trialBalance(state.entries);
+  const ar = sumOpen(arDocs()), arGL = bal(role("receivable"));
+  const ap = sumOpen(apDocs()), apGL = -bal(role("payable"));
+  const grir = bal(role("stock_received_not_billed"));
+  const assets = state.docs.filter((d) => d.kind === "asset" && d.status === "open");
+  const cost = assets.reduce((s, d) => s + M(d.dpp), 0n), costGL = bal(role("fixed_asset"));
+  const dep = state.docs.filter((d) => d.kind === "depreciation" && d.status === "open").reduce((s, d) => s + M(d.amount), 0n);
+  const depGL = -bal(role("accumulated_depreciation"));
+  const b = bs(fyEnd());
+  return [
+    { name: "Neraca saldo seimbang", ok: tb.balanced, detail: `Debit ${txt(M(tb.total_debit))} = kredit ${txt(M(tb.total_credit))}` },
+    { name: "Rincian piutang = akun kontrol", ok: ar === arGL, detail: `Per faktur ${txt(ar)}, buku besar ${txt(arGL)}` },
+    { name: "Rincian utang = akun kontrol", ok: ap === apGL, detail: `Per faktur ${txt(ap)}, buku besar ${txt(apGL)}` },
+    { name: "GR/IR bersih nol", ok: grir === 0n, detail: `Saldo ${txt(grir)}` },
+    { name: "Register aset = buku besar", ok: cost === costGL && dep === depGL, detail: `Perolehan ${txt(cost)}, akumulasi ${txt(dep)}` },
+    { name: "Aset = liabilitas + ekuitas", ok: b.tA === b.tL + b.tE, detail: `${txt(b.tA)} = ${txt(b.tL + b.tE)}` },
+  ];
+}
+
+// ---------------------------------------------------------------- commands
+function newParty(f, list, prefix) {
+  if (f.party !== "__new") return f.party;
+  const name = (f.new_party ?? "").trim();
+  if (!name) throw new FieldErr("new_party", "Isi nama untuk pihak baru");
+  const id = prefix + (list.length + 1);
+  list.push({ id, name });
+  return id;
+}
+function submitSale(f) {
+  const date = dateField(f.date), dpp = money(f.dpp, "dpp");
+  const cost = f.kind === "sale" && f.cost ? money(f.cost, "cost", { zero: true }) : "0.00";
+  return tx(() => {
+    const p = newParty(f, state.customers, "C");
+    const ppn = state.company.pkp ? taxAmt("PPN", dpp, date) : "0.00";
+    const total = S(M(dpp) + M(ppn));
+    return makeDoc(f.kind, { token: f.token, date, due: addDays(date, state.company.term_days), party: p, dpp, ppn, total, cost, memo: f.memo?.trim() }, () => [
+      f.kind === "sale"
+        ? ["sale_invoice", { receivable: total, sales: dpp, tax_output_ppn: ppn }, "post"]
+        : ["service_invoice", { receivable: total, service_revenue: dpp, tax_output_ppn: ppn }, "post"],
+      ...(M(cost) > 0n ? [["sale_cogs", { cogs: cost, inventory: cost }, "cogs"]] : []),
+    ]);
+  });
+}
+function submitPurchase(f) {
+  const date = dateField(f.date), dpp = money(f.dpp, "dpp");
+  return tx(() => {
+    const p = newParty(f, state.suppliers, "S");
+    const ppn = f.pkp === "on" ? taxAmt("PPN", dpp, date) : "0.00";
+    const total = S(M(dpp) + M(ppn));
+    // A company that is not PKP cannot credit input PPN: the PPN becomes part of the cost (P4).
+    const credit = state.company.pkp, cost = credit ? dpp : total, input = credit ? ppn : "0.00";
+    return makeDoc(f.kind, { token: f.token, date, due: addDays(date, state.company.term_days), party: p, dpp, ppn, total, memo: f.memo?.trim() }, () =>
+      f.kind === "purchase"
+        ? [["goods_receipt", { inventory: cost, stock_received_not_billed: cost }, "gr"],
+           ["vendor_invoice", { stock_received_not_billed: cost, tax_input_ppn: input, payable: total }, "post"]]
+        : [["vendor_service_invoice", { service_expense: cost, tax_input_ppn: input, payable: total }, "post"]]);
+  });
+}
+function submitAsset(f) {
+  const date = dateField(f.date), dpp = money(f.dpp, "dpp"), residual = money(f.residual, "residual", { zero: true });
+  const months = Number(f.months);
+  if (!Number.isInteger(months) || months < 1) throw new FieldErr("months", "Isi umur dalam bulan, angka bulat");
+  if (M(residual) >= M(dpp)) throw new FieldErr("residual", "Nilai sisa harus di bawah harga perolehan");
+  const name = (f.name ?? "").trim();
+  if (!name) throw new FieldErr("name", "Isi nama aset");
+  return tx(() => {
+    const p = newParty(f, state.suppliers, "S");
+    const ppn = f.pkp === "on" ? taxAmt("PPN", dpp, date) : "0.00";
+    const total = S(M(dpp) + M(ppn));
+    const credit = state.company.pkp, cost = credit ? dpp : total;
+    return makeDoc("asset", { token: f.token, date, due: addDays(date, state.company.term_days), party: p, name, dpp: cost, ppn, total, residual, months, memo: name }, () =>
+      [["asset_acquisition", { fixed_asset: cost, tax_input_ppn: credit ? ppn : "0.00", payable: total }, "post"]]);
+  });
+}
+function settle(f, kind) {
+  const isR = kind === "receipt";
+  const d = state.docs.find((x) => x.no === f.ref && x.status === "open" && (isR ? AR_KINDS : AP_KINDS).includes(x.kind));
+  if (!d) throw new FieldErr("ref", "Pilih faktur yang masih terbuka");
+  const date = dateField(f.date);
+  if (date < d.date) throw new FieldErr("date", "Tanggal sebelum tanggal faktur");
+  const svc = isR ? "service" : "purchase_service";
+  const withhold = f.pph23 === "on";
+  if (withhold && d.kind !== svc) throw new FieldErr("pph23", "PPh 23 hanya dipotong atas jasa");
+  if (withhold && state.docs.some((x) => x.status === "open" && x.ref === d.no && M(x.pph) > 0n)) throw new FieldErr("pph23", "PPh 23 faktur ini sudah dipotong");
+  const pph = withhold ? taxAmt("PPh 23", d.dpp, date) : "0.00";
+  const bank = money(f.bank, "bank");
+  const amt = M(bank) + M(pph);
+  if (amt > openAmt(d)) throw new FieldErr("bank", `Melebihi sisa ${txt(openAmt(d))}`);
+  return tx(() => makeDoc(kind, { token: f.token, date, party: d.party, ref: d.no, bank, pph, amount: S(amt) }, () => [isR
+    ? ["receipt_in", { bank, prepaid_tax_22_23_25: pph, receivable: S(amt) }, "post"]
+    : ["payment_out", { payable: S(amt), bank, wht_payable_23: pph }, "post"]]));
+}
+function runDepreciation(f) {
+  const month = f.month;
+  if (!/^\d{4}-\d{2}$/.test(month ?? "")) throw new FieldErr("month", "Pilih bulan");
+  return tx(() => {
+    const done = [], skip = [];
+    for (const a of state.docs.filter((d) => d.kind === "asset" && d.status === "open")) {
+      if (a.date.slice(0, 7) > month) continue;
+      const deps = state.docs.filter((d) => d.kind === "depreciation" && d.status === "open" && d.ref === a.no);
+      if (deps.some((d) => d.month === month)) { skip.push(`${a.name}: ${month} sudah diposting`); continue; }
+      if (deps.length >= a.months) { skip.push(`${a.name}: sudah habis disusutkan`); continue; }
+      // straight line; the last month takes the rounding remainder
+      const base = M(a.dpp) - M(a.residual), per = base / BigInt(a.months);
+      const amt = deps.length === a.months - 1 ? base - per * BigInt(a.months - 1) : per;
+      const r = makeDoc("depreciation", { token: `dep:${a.no}:${month}`, date: lastDay(month), month, ref: a.no, amount: S(amt), memo: a.name },
+        () => [["depreciation", { depreciation_expense: S(amt), accumulated_depreciation: S(amt) }, "post"]]);
+      if (!r.ok) return r;
+      done.push(`${a.name} ${txt(amt)} (${r.doc.entries[0]})`);
+    }
+    if (!done.length && !skip.length) return { ok: false, errors: ["Tidak ada aset yang diperoleh sampai bulan ini"] };
+    if (!done.length) return { ok: false, errors: skip };
+    return { ok: true, flash: `Penyusutan ${month} diposting: ${done.join("; ")}.${skip.length ? " Dilewati: " + skip.join("; ") : ""}` };
+  });
+}
+function settlePPN(f) {
+  const month = f.month;
+  if (!/^\d{4}-\d{2}$/.test(month ?? "")) throw new FieldErr("month", "Pilih masa pajak");
+  const end = lastDay(month);
+  return tx(() => {
+    const out = -bal(role("tax_output_ppn"), end), inp = bal(role("tax_input_ppn"), end);
+    if (out <= 0n && inp <= 0n) return { ok: false, errors: [`Tidak ada saldo PPN Keluaran atau Masukan sampai ${dfmt(end)}`] };
+    const diff = out - inp;
+    return makeDoc("ppn_settlement", { token: `ppn:${month}`, date: end, month, out: S(out), inp: S(inp), amount: S(diff < 0n ? -diff : diff), memo: `masa ${month}` }, () =>
+      [["ppn_settlement", { tax_output_ppn: S(out), tax_input_ppn: S(inp),
+        ppn_payable: diff > 0n ? S(diff) : undefined, ppn_receivable: diff < 0n ? S(-diff) : undefined }, "post"]]);
+  });
+}
+function payTax(f) {
+  const date = dateField(f.date);
+  return tx(() => {
+    const ppn = -bal(role("ppn_payable"), date), pph = -bal(role("wht_payable_23"), date);
+    const p1 = ppn > 0n ? ppn : 0n, p2 = pph > 0n ? pph : 0n;
+    if (!p1 && !p2) return { ok: false, errors: [`Tidak ada Utang PPN atau PPh 23 per ${dfmt(date)}`] };
+    return makeDoc("tax_payment", { token: f.token, date, ppn: S(p1), pph: S(p2), amount: S(p1 + p2) }, () =>
+      [["tax_payment", { ppn_payable: S(p1), wht_payable_23: S(p2), bank: S(p1 + p2) }, "post"]]);
+  });
+}
+function saveManual(f) {
+  const date = dateField(f.date), lines = [];
+  for (let i = 0; `acct_${i}` in f; i++) {
+    const a = f[`acct_${i}`], d = (f[`dr_${i}`] ?? "").trim(), c = (f[`cr_${i}`] ?? "").trim();
+    if (!a && !d && !c) continue;
+    if (!a) throw new Error(`Baris ${i + 1}: pilih akun`);
+    const p = (v) => { try { return v ? money(v, null, { zero: true }) : "0.00"; } catch (e) { throw new Error(`Baris ${i + 1}: ${e.message}`); } };
+    lines.push({ account: a, debit: p(d), credit: p(c) });
+  }
+  const entry = { idempotency_key: f.token, journal: "JU", status: "draft", posting_date: date, document_date: date,
+    description: f.memo?.trim() || "Jurnal umum", created_by: state.user, lines };
+  const v = core.validateEntry(entry, ctx());
+  if (!v.ok) return v;
+  return tx(() => {
+    if (state.entries.some((e) => e.idempotency_key === entry.idempotency_key)) return { ok: true, flash: "Draf ini sudah tersimpan.", sel: { type: "entry", id: entry.idempotency_key } };
+    state.entries.push(entry);
+    return { ok: true, key: entry.idempotency_key, sel: { type: "entry", id: entry.idempotency_key },
+      flash: `Draf disimpan. Pengguna lain harus menyetujui sebelum jurnal diposting.` };
+  });
+}
+function approve(f) {
+  return tx(() => {
+    const e = state.entries.find((x) => x.idempotency_key === f.key && x.status === "draft");
+    if (!e) return { ok: false, errors: ["Draf tidak ditemukan"] };
+    e.approved_by = state.user;
+    const r = postEntry(e, "JU");
+    return r.ok ? { ok: true, flash: `Disetujui ${USERS[state.user]} dan diposting sebagai ${r.entry.entry_number}.`, sel: { type: "entry", id: e.idempotency_key } } : r;
+  });
+}
+function reverseManual(f) {
+  const date = dateField(f.date);
+  return tx(() => {
+    const e = state.entries.find((x) => x.idempotency_key === f.key);
+    if (!e || e.status !== "posted") return { ok: false, errors: ["Hanya jurnal berstatus diposting yang bisa dibalik"] };
+    if (e.source_type) return { ok: false, errors: ["Jurnal dari dokumen dibatalkan lewat dokumennya"] };
+    const r = reverseInto(e, date, "Pembalikan");
+    return r.ok ? { ok: true, flash: `${e.entry_number} dibalik oleh ${r.entry.entry_number}. Keduanya tetap di buku besar.`, sel: { type: "entry", id: r.entry.idempotency_key } } : r;
+  });
+}
+function cancelDoc(f) {
+  const date = dateField(f.date);
+  return tx(() => {
+    const d = state.docs.find((x) => x.no === f.no);
+    if (!d || d.status !== "open") return { ok: false, errors: ["Dokumen tidak ditemukan atau sudah dibatalkan"] };
+    const deps = state.docs.filter((x) => x.status === "open" && x.ref === d.no);
+    if (deps.length) return { ok: false, errors: [`Batalkan dulu ${deps.map((x) => x.no).join(", ")} yang mengacu ke ${d.no}`] };
+    if (d.kind === "ppn_settlement" && state.docs.some((x) => x.kind === "tax_payment" && x.status === "open" && x.date >= d.date))
+      return { ok: false, errors: ["Batalkan dulu setoran pajak sesudah kompensasi ini"] };
+    for (const no of d.entries) {
+      const e = state.entries.find((x) => x.entry_number === no);
+      const r = reverseInto(e, date, `Pembatalan ${d.no}`);
+      if (!r.ok) return r;
+    }
+    d.status = "cancelled"; d.cancelled_on = date;
+    return { ok: true, flash: `${d.no} dibatalkan. Jurnal aslinya tetap ada, dibalik oleh jurnal baru.`, sel: { type: "doc", id: d.no } };
+  });
+}
+function addAccount(f) {
+  const code = (f.code ?? "").trim(), name = (f.name ?? "").trim();
+  if (!/^[0-9A-Za-z.-]{1,20}$/.test(code)) throw new FieldErr("code", "Kode 1-20 karakter: angka, huruf, titik, strip");
+  if (state.accounts[code]) throw new FieldErr("code", "Kode sudah dipakai");
+  if (!name) throw new FieldErr("name", "Isi nama akun");
+  return tx(() => {
+    state.accounts[code] = { code, name, type: f.type, normal_balance: f.normal_balance, control: null, closing_only: false, active: true, postable: true };
+    return { ok: true, flash: `Akun ${code} ${name} ditambahkan.` };
+  });
+}
+function saveDefaults(f) {
+  return tx(() => {
+    for (const r of Object.keys(ROLES)) { if (f[`role_${r}`]) state.defaults[r] = f[`role_${r}`]; else delete state.defaults[r]; }
+    return { ok: true, flash: "Penentuan akun disimpan. Peran yang dikosongkan akan menolak posting." };
+  });
+}
+function saveCompany(f) {
+  const name = (f.name ?? "").trim();
+  if (!name) throw new FieldErr("name", "Isi nama perusahaan");
+  const term = Number(f.term_days);
+  if (!Number.isInteger(term) || term < 0) throw new FieldErr("term_days", "Isi jumlah hari, angka bulat");
+  return tx(() => { Object.assign(state.company, { name, pkp: f.pkp === "on", term_days: term }); return { ok: true, flash: "Konfigurasi perusahaan disimpan." }; });
+}
+const H = {
+  sale: submitSale, purchase: submitPurchase, asset: submitAsset,
+  receipt: (f) => settle(f, "receipt"), payment: (f) => settle(f, "payment"),
+  depreciation: runDepreciation, ppn: settlePPN, taxpay: payTax,
+  manual: saveManual, approve, reverse: reverseManual, cancel: cancelDoc,
+  account: addAccount, defaults: saveDefaults, company: saveCompany,
+  reset: () => { state = seed(); return { ok: true, flash: "Data contoh dimuat ulang." }; },
+  filter: (f) => { Object.assign(ui.f, f); return { ok: true, keep: true }; },
+};
+
+// ---------------------------------------------------------------- example data, posted through the same commands
+function seed() {
+  state = fresh();
+  const run = (fn, f, user = "rina") => { state.user = user; const r = fn({ token: uid(), ...f }); if (!r.ok) console.error("seed", f, r.errors); return r; };
+  const cap = run(saveManual, { date: "2026-01-02", memo: "Setoran modal pemegang saham",
+    acct_0: "1-1200", dr_0: "500.000.000", cr_0: "", acct_1: "3-1000", dr_1: "", cr_1: "500.000.000" });
+  run(approve, { key: cap.key }, "budi");
+  const p1 = run(submitPurchase, { kind: "purchase", party: "S1", date: "2026-01-05", dpp: "80.000.000", pkp: "on", memo: "Bahan kemasan" });
+  run(submitSale, { kind: "sale", party: "C1", date: "2026-01-10", dpp: "95.000.000", cost: "60.000.000", memo: "Diskon dagang 5% sudah dipotong" });
+  const a2 = run(submitSale, { kind: "service", party: "C2", date: "2026-01-12", dpp: "50.000.000", memo: "Jasa pengemasan" });
+  const p2 = run(submitPurchase, { kind: "purchase_service", party: "S2", date: "2026-01-15", dpp: "40.000.000", pkp: "on", memo: "Jasa konsultan" });
+  run(submitAsset, { party: "S3", date: "2026-01-20", name: "Mesin pengemas otomatis", dpp: "128.000.000", pkp: "on", residual: "8.000.000", months: "60" });
+  run(H.receipt, { ref: a2.doc.no, date: "2026-01-25", pph23: "on", bank: "54.500.000" });
+  run(H.payment, { ref: p1.doc.no, date: "2026-01-28", bank: "88.800.000" });
+  run(H.payment, { ref: p2.doc.no, date: "2026-01-30", pph23: "on", bank: "43.600.000" });
+  run(runDepreciation, { month: "2026-01" });
+  run(settlePPN, { month: "2026-01" });
+  run(payTax, { date: "2026-02-10" });
+  run(submitSale, { kind: "service", party: "C3", date: "2026-02-14", dpp: "12.500.000", memo: "Jasa desain kemasan" });
+  state.user = "rina";
+  save();
+  return state;
+}
+
+// ---------------------------------------------------------------- view pieces
+const badge = (status, word) => `<span class="badge" data-status="${status}">${word}</span>`;
+function entryBadge(e) {
+  if (e.status === "draft") return badge("warning", "Menunggu persetujuan");
+  if (e.status === "reversed") return badge("neutral", "Dibalik");
+  return badge("success", e.reverses_entry_number ? "Pembalik" : "Diposting");
+}
+function docBadge(d) {
+  if (d.status === "cancelled") return badge("neutral", "Dibatalkan");
+  if (!AR_KINDS.includes(d.kind) && !AP_KINDS.includes(d.kind)) return badge("success", "Diposting");
+  const rem = openAmt(d);
+  if (rem === 0n) return badge("success", "Lunas");
+  return d.due && d.due < today() ? badge("critical", "Lewat jatuh tempo") : badge("warning", "Belum lunas");
+}
+function table(cols, rows, { foot, empty = "Belum ada data." } = {}) {
+  if (!rows.length) return `<p class="empty">${empty}</p>`;
+  const th = cols.map((c) => `<th${c.num ? ' class="num"' : ""}>${c.h}</th>`).join("");
+  const body = rows.map((r) => `<tr${r.attr ?? ""}>${r.cells.map((c, i) => `<td${cols[i].num ? ' class="num"' : cols[i].cls ? ` class="${cols[i].cls}"` : ""}${cols[i].cls === "trunc" || cols[i].cls === "acct" ? ` title="${esc(String(c).replace(/<[^>]+>/g, ""))}"` : ""}>${c}</td>`).join("")}</tr>`).join("");
+  const tf = foot ? `<tfoot><tr>${foot.map((c, i) => `<td${cols[i].num ? ' class="num"' : ""}>${c}</td>`).join("")}</tr></tfoot>` : "";
+  return `<div class="tw"><table><thead><tr>${th}</tr></thead><tbody>${body}</tbody>${tf}</table></div>`;
+}
+const selAttr = (type, id) => ` data-act="${type}" data-id="${esc(id)}" tabindex="0"${ui.sel?.type === type && ui.sel?.id === id ? ' aria-selected="true"' : ""}`;
+function fld(form, name, label, input, help = "") {
+  return `<div class="fld"><label for="${form}-${name}">${label}</label>${input}<p class="help" data-help="${name}" data-orig="${esc(help)}">${esc(help)}</p></div>`;
+}
+const inp = (form, name, value = "", attrs = "") => `<input id="${form}-${name}" name="${name}" value="${esc(value)}" ${attrs}>`;
+const amount = (form, name, value = "") => inp(form, name, value, 'inputmode="decimal" autocomplete="off"');
+const dateIn = (form, name = "date", value = defDate()) => inp(form, name, value, 'type="date"');
+const monthIn = (form, name = "month", value = defDate().slice(0, 7)) => inp(form, name, value, 'type="month"');
+const sel = (form, name, opts, value) => `<select id="${form}-${name}" name="${name}">${opts.map(([v, t]) => `<option value="${esc(v)}"${v === value ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>`;
+const check = (form, name, label, on = true) => `<div class="fld"><label class="check" for="${form}-${name}"><input type="checkbox" id="${form}-${name}" name="${name}"${on ? " checked" : ""}><span class="box" aria-hidden="true"></span>${label}</label><p class="help" data-help="${name}" data-orig=""></p></div>`;
+function form(id, title, body, btn, { confirm } = {}) {
+  return `<section class="panel"><form data-form="${id}" novalidate${confirm ? ` data-confirm="${esc(confirm)}"` : ""}>
+    ${title ? `<h2>${title}</h2>` : ""}<input type="hidden" name="token" value="${uid()}">${body}
+    <div class="actions"><button class="btn" type="submit">${btn}</button></div><div data-status role="status"></div></form></section>`;
+}
+const postable = () => Object.values(state.accounts).filter((a) => a.active && a.postable).sort((a, b) => a.code.localeCompare(b.code));
+const partyOpts = (list, label) => [...list.map((p) => [p.id, p.name]), ["__new", `+ ${label} baru`]];
+function flashHtml() {
+  if (!ui.flash) return "";
+  const h = `<div class="note note--ok" role="status"><strong>Berhasil</strong><span>${esc(ui.flash)}</span></div>`;
+  ui.flash = null;
+  return h;
+}
+function linesTable(e) {
+  const rows = e.lines.map((l) => ({ cells: [esc(aname(l.account)) + (l.party ? ` · ${esc(party(l.party))}` : ""), M(l.debit) ? txt(M(l.debit)) : "", M(l.credit) ? txt(M(l.credit)) : ""] }));
+  const t = e.lines.reduce((s, l) => s + M(l.debit), 0n);
+  return `<div class="lines">${table([{ h: "Akun", cls: "acct" }, { h: "Debit", num: true }, { h: "Kredit", num: true }], rows, { foot: ["Jumlah", txt(t), txt(t)] })}</div>`;
+}
+function entryHead(e) {
+  return `<dl>
+    <dt>Status</dt><dd>${entryBadge(e)}</dd>
+    <dt>Tanggal</dt><dd>${dfmt(e.posting_date)}</dd>
+    <dt>Jurnal</dt><dd>${JOURNALS[e.journal]}</dd>
+    <dt>Keterangan</dt><dd>${esc(e.description)}</dd>
+    <dt>Sumber</dt><dd>${e.source_type ? `${esc(KINDS[e.source_type]?.label ?? e.source_type)} ${esc(e.source_id)}` : "Jurnal manual"}</dd>
+    <dt>Dibuat</dt><dd>${USERS[e.created_by] ?? esc(e.created_by)}</dd>
+    ${e.approved_by ? `<dt>Disetujui</dt><dd>${USERS[e.approved_by] ?? esc(e.approved_by)}</dd>` : ""}
+    ${e.reverses_entry_number ? `<dt>Membalik</dt><dd>${esc(e.reverses_entry_number)}</dd>` : ""}
+    ${e.reversed_by ? `<dt>Dibalik oleh</dt><dd>${esc(e.reversed_by)}</dd>` : ""}
+    <dt>Kunci idempotensi</dt><dd class="meta">${esc(e.idempotency_key)}</dd></dl>`;
+}
+function inspector() {
+  const close = `<button class="btn btn--ghost btn--sm" type="button" data-act="close">Tutup</button>`;
+  if (ui.sel.type === "new-account") return ui.newAccount().replace("<h2>Akun baru</h2>", `<div class="panel-head"><h2>Akun baru</h2>${close}</div>`);
+  if (ui.sel.type === "entry") {
+    const e = state.entries.find((x) => x.idempotency_key === ui.sel.id);
+    if (!e) { ui.sel = null; return ""; }
+    let act = "";
+    if (e.status === "draft")
+      act = form("approve", "", `<input type="hidden" name="key" value="${esc(e.idempotency_key)}"><p class="meta">Dibuat oleh ${USERS[e.created_by]}. Penyetuju harus pengguna lain; ganti pengguna di bilah atas.</p>`, `Setujui dan posting sebagai ${USERS[state.user]}`);
+    else if (e.status === "posted" && !e.source_type)
+      act = form("reverse", "", `<input type="hidden" name="key" value="${esc(e.idempotency_key)}">${fld("reverse", "date", "Tanggal pembalikan", dateIn("reverse", "date", e.posting_date))}`, "Balik jurnal", { confirm: "Klik lagi untuk membalik" });
+    else if (e.status === "posted" && e.source_type && !e.reverses_entry_number)
+      act = `<p class="meta">Jurnal ini dibuat dokumen ${esc(e.source_id)}. Batalkan lewat dokumennya.</p>`;
+    return `<section class="panel"><div class="panel-head"><h2>${esc(e.entry_number ?? "Draf")}</h2>${close}</div>${entryHead(e)}${linesTable(e)}</section>${act}`;
+  }
+  const d = state.docs.find((x) => x.no === ui.sel.id);
+  if (!d) { ui.sel = null; return ""; }
+  const entries = d.entries.map((no) => state.entries.find((e) => e.entry_number === no));
+  const reversals = entries.filter((e) => e.reversed_by).map((e) => state.entries.find((x) => x.entry_number === e.reversed_by));
+  const money2 = (k, l) => (d[k] !== undefined && d[k] !== null ? `<dt>${l}</dt><dd>${txt(M(d[k]))}</dd>` : "");
+  const head = `<dl>
+    <dt>Status</dt><dd>${docBadge(d)}</dd>
+    <dt>Jenis</dt><dd>${KINDS[d.kind].label}</dd>
+    <dt>Tanggal</dt><dd>${dfmt(d.date)}${d.due ? ` · jatuh tempo ${dfmt(d.due)}` : ""}</dd>
+    ${d.party ? `<dt>Pihak</dt><dd>${esc(party(d.party))}</dd>` : ""}
+    ${d.ref ? `<dt>Untuk</dt><dd>${esc(d.ref)}</dd>` : ""}
+    ${d.memo ? `<dt>Catatan</dt><dd>${esc(d.memo)}</dd>` : ""}
+    ${money2("dpp", "DPP")}${money2("ppn", "PPN")}${money2("total", "Total")}${money2("pph", "PPh 23")}${money2("bank", "Bank")}${money2("amount", "Jumlah")}
+    ${AR_KINDS.includes(d.kind) || AP_KINDS.includes(d.kind) ? `<dt>Sisa</dt><dd>${txt(openAmt(d))}</dd>` : ""}</dl>`;
+  const act = d.status === "open"
+    ? form("cancel", "", `<input type="hidden" name="no" value="${esc(d.no)}">${fld("cancel", "date", "Tanggal pembatalan", dateIn("cancel", "date", d.date), "Jurnal pembalik diposting pada tanggal ini.")}`, "Batalkan dokumen", { confirm: "Klik lagi untuk membatalkan" })
+    : "";
+  const blocks = [...entries, ...reversals].map((e) => `<div class="block"><h3><a href="#jurnal" data-goto="${esc(e.idempotency_key)}">${esc(e.entry_number)}</a> · ${JOURNALS[e.journal]} · ${dfmt(e.posting_date)}</h3>${linesTable(e)}</div>`).join("");
+  return `<section class="panel"><div class="panel-head"><h2>${esc(d.no)}</h2>${close}</div>${head}${blocks}</section>${act}`;
+}
+function split(main, side) {
+  const fl = flashHtml(), s = ui.sel ? inspector() : side;
+  if (!fl && !s) return `<div class="col">${main}</div>`;
+  return `<div class="split"><div class="col">${main}</div><aside class="col side-col" aria-label="Detail dan formulir">${fl}${s}</aside></div>`;
+}
+const block = (title, body, extra = "") => `<section class="block"><div class="block-head"><h2>${title}</h2>${extra}</div>${body}</section>`;
+function docTable(list, who) {
+  // DPP and PPN live in the inspector: six columns fit beside the form at 1440px
+  const rows = [...list].reverse().map((d) => ({ attr: selAttr("doc", d.no), cells: [
+    `<span class="id">${esc(d.no)}</span>`, dfmt(d.date), esc(party(d.party)),
+    txt(M(d.total)), d.status === "open" ? txt(openAmt(d)) : "", docBadge(d)] }));
+  const open = list.filter((d) => d.status === "open");
+  return table([{ h: "Nomor" }, { h: "Tanggal" }, { h: who, cls: "trunc" }, { h: "Total (Rp)", num: true }, { h: "Sisa (Rp)", num: true }, { h: "Status" }],
+    rows, { foot: ["Terbuka", "", "", txt(open.reduce((s, d) => s + M(d.total), 0n)), txt(sumOpen(list)), ""], empty: "Belum ada faktur. Buat yang pertama dengan formulir di samping." });
+}
+function settleTable(kind) {
+  const list = state.docs.filter((d) => d.kind === kind).reverse();
+  return table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Faktur" }, { h: "Jumlah (Rp)", num: true }, { h: "PPh 23 (Rp)", num: true }, { h: "Status" }],
+    list.map((d) => ({ attr: selAttr("doc", d.no), cells: [`<span class="id">${esc(d.no)}</span>`, dfmt(d.date), esc(d.ref), txt(M(d.amount)), txt(M(d.pph)), docBadge(d)] })),
+    { empty: "Belum ada." });
+}
+
+// ---------------------------------------------------------------- views
+function vDash() {
+  const b = bs(fyEnd());
+  const kp = [["Saldo bank", bal(role("bank"))], ["Piutang usaha", bal(role("receivable"))], ["Utang usaha", -bal(role("payable"))], [`Laba ${state.company.fiscal_year}`, b.profit]];
+  const cs = checks();
+  const recent = sorted(state.entries.filter((e) => e.status !== "draft")).slice(-8).reverse();
+  const drafts = state.entries.filter((e) => e.status === "draft");
+  return { sub: `Tahun buku ${state.company.fiscal_year} · semua angka dalam rupiah`, body: `
+    <div class="col">
+      <div class="kpis">${kp.map(([l, v]) => `<div class="kpi"><span class="meta">${l}</span><b title="${txt(v)}">${fmt(v)}</b></div>`).join("")}</div>
+      ${block("Pemeriksaan buku besar", table([{ h: "Pemeriksaan" }, { h: "Hasil" }, { h: "Rincian", cls: "trunc" }],
+        cs.map((c) => ({ cells: [c.name, c.ok ? badge("success", "Cocok") : badge("critical", "Selisih"), c.detail] }))),
+        `<span class="meta">Setiap buku pembantu harus sama dengan akun kontrolnya</span>`)}
+      ${drafts.length ? block("Menunggu persetujuan", table([{ h: "Tanggal" }, { h: "Keterangan", cls: "trunc" }, { h: "Dibuat" }],
+        drafts.map((e) => ({ cells: [dfmt(e.posting_date), esc(e.description), USERS[e.created_by]] }))), `<a href="#jurnal">Buka jurnal</a>`) : ""}
+      ${block("Jurnal terakhir", entriesTable(recent, false), `<a href="#jurnal">Semua jurnal</a>`)}
+    </div>` };
+}
+function entriesTable(list, selectable = true) {
+  return table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Jurnal" }, { h: "Keterangan", cls: "trunc" }, { h: "Jumlah (Rp)", num: true }, { h: "Status" }],
+    list.map((e) => ({ attr: selectable ? selAttr("entry", e.idempotency_key) : "", cells: [
+      `<span class="id">${esc(e.entry_number ?? "Draf")}</span>`, dfmt(e.posting_date), JOURNALS[e.journal], esc(e.description),
+      txt(e.lines.reduce((s, l) => s + M(l.debit), 0n)), entryBadge(e)] })), { empty: "Tidak ada jurnal yang cocok dengan saringan ini." });
+}
+function vSales() {
+  const open = arDocs().filter((d) => d.status === "open" && openAmt(d) > 0n);
+  const side = form("sale", "Faktur penjualan", `
+      ${fld("sale", "kind", "Jenis", sel("sale", "kind", [["sale", "Barang"], ["service", "Jasa"]], "sale"))}
+      ${fld("sale", "party", "Pelanggan", sel("sale", "party", partyOpts(state.customers, "Pelanggan"), "C1"))}
+      ${fld("sale", "new_party", "Nama pelanggan baru", inp("sale", "new_party"), "Diisi hanya jika memilih pelanggan baru.")}
+      <div class="row2">${fld("sale", "date", "Tanggal", dateIn("sale"))}${fld("sale", "dpp", "DPP (Rp) *", amount("sale", "dpp"), state.company.pkp ? "PPN dihitung dari parameter pajak." : "Perusahaan bukan PKP: tanpa PPN.")}</div>
+      ${fld("sale", "cost", "Harga pokok barang (Rp)", amount("sale", "cost"), "Untuk barang: membentuk jurnal HPP dan persediaan.")}
+      ${fld("sale", "memo", "Catatan", inp("sale", "memo"))}`, "Posting faktur")
+    + form("receipt", "Terima pembayaran", open.length ? `
+      ${fld("receipt", "ref", "Faktur", sel("receipt", "ref", open.map((d) => [d.no, `${d.no} · ${party(d.party)}`]), open[0].no))}
+      ${fld("receipt", "date", "Tanggal", dateIn("receipt"))}
+      ${check("receipt", "pph23", "Pelanggan memotong PPh 23", false)}
+      ${fld("receipt", "bank", "Diterima di bank (Rp) *", amount("receipt", "bank"))}` : `<p class="meta">Semua faktur sudah lunas.</p>`, "Posting penerimaan");
+  return { sub: `Piutang terbuka ${txt(sumOpen(arDocs()))}`, body: split(
+    block("Faktur penjualan", docTable(arDocs(), "Pelanggan")) + block("Penerimaan", settleTable("receipt")), side) };
+}
+function vPurch() {
+  const open = apDocs().filter((d) => d.status === "open" && openAmt(d) > 0n);
+  const side = form("purchase", "Faktur pembelian", `
+      ${fld("purchase", "kind", "Jenis", sel("purchase", "kind", [["purchase", "Barang (lewat GR/IR)"], ["purchase_service", "Jasa"]], "purchase"))}
+      ${fld("purchase", "party", "Pemasok", sel("purchase", "party", partyOpts(state.suppliers, "Pemasok"), "S1"))}
+      ${fld("purchase", "new_party", "Nama pemasok baru", inp("purchase", "new_party"), "Diisi hanya jika memilih pemasok baru.")}
+      <div class="row2">${fld("purchase", "date", "Tanggal", dateIn("purchase"))}${fld("purchase", "dpp", "DPP (Rp) *", amount("purchase", "dpp"))}</div>
+      ${check("purchase", "pkp", "Ada Faktur Pajak dari pemasok PKP")}
+      ${fld("purchase", "memo", "Catatan", inp("purchase", "memo"))}`, "Posting faktur")
+    + form("payment", "Bayar pemasok", open.length ? `
+      ${fld("payment", "ref", "Faktur", sel("payment", "ref", open.map((d) => [d.no, `${d.no} · ${party(d.party)}`]), open[0].no))}
+      ${fld("payment", "date", "Tanggal", dateIn("payment"))}
+      ${check("payment", "pph23", "Potong PPh 23", false)}
+      ${fld("payment", "bank", "Dibayar dari bank (Rp) *", amount("payment", "bank"))}` : `<p class="meta">Tidak ada utang terbuka.</p>`, "Posting pembayaran");
+  return { sub: `Utang terbuka ${txt(sumOpen(apDocs()))}`, body: split(
+    block("Faktur pembelian", docTable(apDocs(), "Pemasok")) + block("Pembayaran", settleTable("payment")), side) };
+}
+function vAssets() {
+  const list = state.docs.filter((d) => d.kind === "asset");
+  const rows = list.map((a) => {
+    const acc = state.docs.filter((d) => d.kind === "depreciation" && d.status === "open" && d.ref === a.no).reduce((s, d) => s + M(d.amount), 0n);
+    return { attr: selAttr("doc", a.no), cells: [`<span class="id">${esc(a.no)}</span>`, esc(a.name), txt(M(a.dpp)), txt(acc), txt(M(a.dpp) - acc), a.status === "open" ? badge("success", "Aktif") : badge("neutral", "Dibatalkan")] };
+  });
+  const deps = state.docs.filter((d) => d.kind === "depreciation").reverse();
+  const side = form("asset", "Aset baru", `
+      ${fld("asset", "name", "Nama aset *", inp("asset", "name"))}
+      ${fld("asset", "party", "Pemasok", sel("asset", "party", partyOpts(state.suppliers, "Pemasok"), "S3"))}
+      ${fld("asset", "new_party", "Nama pemasok baru", inp("asset", "new_party"), "Diisi hanya jika memilih pemasok baru.")}
+      <div class="row2">${fld("asset", "date", "Tanggal perolehan", dateIn("asset"))}${fld("asset", "dpp", "Harga perolehan (Rp) *", amount("asset", "dpp"))}</div>
+      <div class="row2">${fld("asset", "residual", "Nilai sisa (Rp)", amount("asset", "residual", "0"))}${fld("asset", "months", "Umur (bulan) *", inp("asset", "months", "48", 'inputmode="numeric"'))}</div>
+      ${check("asset", "pkp", "Ada Faktur Pajak dari pemasok PKP")}`, "Posting perolehan")
+    + form("depreciation", "Jalankan penyusutan", `${fld("depreciation", "month", "Bulan", monthIn("depreciation"), "Garis lurus. Menjalankan bulan yang sama dua kali tidak menggandakan jurnal.")}`, "Posting penyusutan");
+  return { sub: "Garis lurus per bulan; sisa pembulatan masuk bulan terakhir", body: split(
+    block("Register aset", table([{ h: "Nomor" }, { h: "Nama", cls: "trunc" }, { h: "Harga (Rp)", num: true }, { h: "Akumulasi (Rp)", num: true }, { h: "Nilai buku (Rp)", num: true }, { h: "Status" }], rows, { empty: "Belum ada aset tetap." }))
+    + block("Jurnal penyusutan", table([{ h: "Nomor" }, { h: "Bulan" }, { h: "Aset", cls: "trunc" }, { h: "Jumlah (Rp)", num: true }, { h: "Status" }],
+      deps.map((d) => ({ attr: selAttr("doc", d.no), cells: [`<span class="id">${esc(d.no)}</span>`, d.month, esc(d.memo), txt(M(d.amount)), docBadge(d)] })), { empty: "Belum ada penyusutan." })), side) };
+}
+function vTax() {
+  const r = (k) => acct(role(k));
+  const rows = ["tax_output_ppn", "tax_input_ppn", "ppn_receivable", "ppn_payable", "prepaid_tax_22_23_25", "wht_payable_23"].filter((k) => r(k))
+    .map((k) => ({ cells: [ROLES[k][0], esc(aname(role(k))), txt(natural(r(k), bal(role(k))))] }));
+  const docs = state.docs.filter((d) => d.kind === "ppn_settlement" || d.kind === "tax_payment").reverse();
+  const side = form("ppn", "Kompensasi PPN", fld("ppn", "month", "Masa pajak", monthIn("ppn"), "Saldo PPN Keluaran dikurangi PPN Masukan sampai akhir masa."), "Posting kompensasi")
+    + form("taxpay", "Setor pajak", fld("taxpay", "date", "Tanggal setor", dateIn("taxpay"), "Menyetor seluruh Utang PPN dan Utang PPh 23 per tanggal ini."), "Posting setoran");
+  return { sub: "PPN dan PPh 23. Tarif dari parameter berlaku-tanggal di Konfigurasi.", body: split(
+    block("Saldo pajak", table([{ h: "Pos" }, { h: "Akun", cls: "trunc" }, { h: "Saldo (Rp)", num: true }], rows))
+    + block("Dokumen pajak", table([{ h: "Nomor" }, { h: "Tanggal" }, { h: "Jenis" }, { h: "Jumlah (Rp)", num: true }, { h: "Status" }],
+      docs.map((d) => ({ attr: selAttr("doc", d.no), cells: [`<span class="id">${esc(d.no)}</span>`, dfmt(d.date), `${KINDS[d.kind].label}${d.month ? " " + d.month : ""}`, txt(M(d.amount)), docBadge(d)] })), { empty: "Belum ada." })), side) };
+}
+function vJournal() {
+  const f = ui.f;
+  const list = sorted(state.entries).reverse().filter((e) => (!f.jstatus || e.status === f.jstatus) && (!f.journal || e.journal === f.journal));
+  const opts = postable().map((a) => [a.code, `${a.code} ${a.name}`]);
+  const line = (i) => `<tr><td>${sel("manual", `acct_${i}`, [["", "Pilih akun"], ...opts], "")}</td><td>${amount("manual", `dr_${i}`)}</td><td>${amount("manual", `cr_${i}`)}</td></tr>`;
+  const side = form("manual", "Jurnal umum", `
+      <div class="row2">${fld("manual", "date", "Tanggal", dateIn("manual"))}${fld("manual", "memo", "Keterangan", inp("manual", "memo"))}</div>
+      <div class="lines"><div class="tw"><table><thead><tr><th>Akun</th><th class="num">Debit</th><th class="num">Kredit</th></tr></thead><tbody data-lines>${[0, 1, 2].map(line).join("")}</tbody></table></div></div>
+      <div class="actions"><button class="btn btn--ghost btn--sm" type="button" data-act="addline">Tambah baris</button></div>
+      <p class="meta">Disimpan sebagai draf. Akun kontrol (piutang, utang, persediaan, aset tetap) tidak menerima jurnal manual.</p>`, "Simpan draf");
+  const filters = `<form data-form="filter" class="actions" aria-label="Saring jurnal">
+      <label class="meta" for="f-jstatus">Status</label>${sel("f", "jstatus", [["", "Semua"], ["draft", "Draf"], ["posted", "Diposting"], ["reversed", "Dibalik"]], f.jstatus)}
+      <label class="meta" for="f-journal">Jurnal</label>${sel("f", "journal", [["", "Semua"], ...Object.entries(JOURNALS)], f.journal)}</form>`;
+  return { sub: `${state.entries.length} jurnal · nomor berurutan tanpa celah per jurnal per tahun`, actions: filters,
+    body: split(block("Daftar jurnal", entriesTable(list)), side), lineTpl: line };
+}
+function vLedger() {
+  const f = ui.f, a = acct(f.account) ?? acct(role("bank"));
+  const opening = natural(a, bal(a.code, addDays(f.from, -1)));
+  let run = opening;
+  const rows = [];
+  for (const e of sorted(live()).filter((e) => e.posting_date >= f.from && e.posting_date <= f.to))
+    for (const l of e.lines) if (l.account === a.code) {
+      run += natural(a, M(l.debit) - M(l.credit));
+      rows.push({ attr: selAttr("entry", e.idempotency_key), cells: [dfmt(e.posting_date), `<span class="id">${esc(e.entry_number)}</span>`, esc(e.description), M(l.debit) ? txt(M(l.debit)) : "", M(l.credit) ? txt(M(l.credit)) : "", fmt(run)] });
+    }
+  const filters = `<form data-form="filter" class="actions" aria-label="Saring buku besar">
+      ${sel("f", "account", Object.values(state.accounts).sort((x, y) => x.code.localeCompare(y.code)).map((x) => [x.code, `${x.code} ${x.name}`]), a.code)}
+      ${inp("f", "from", f.from, 'type="date" aria-label="Dari"')}${inp("f", "to", f.to, 'type="date" aria-label="Sampai"')}</form>`;
+  return { sub: `${esc(a.name)} · saldo normal ${debitNormal(a) ? "debit" : "kredit"} · saldo awal ${txt(opening)}`, actions: filters,
+    body: split(block("Mutasi", table([{ h: "Tanggal" }, { h: "Nomor" }, { h: "Keterangan", cls: "trunc" }, { h: "Debit (Rp)", num: true }, { h: "Kredit (Rp)", num: true }, { h: "Saldo (Rp)", num: true }],
+      rows, { foot: ["Saldo akhir", "", "", "", "", fmt(run)], empty: "Tidak ada mutasi pada rentang ini." })), "") };
+}
+function vTB() {
+  const tb = core.trialBalance(state.entries.filter((e) => e.posting_date <= ui.f.asOf));
+  const rows = tb.rows.filter((r) => M(r.debit) || M(r.credit)).map((r) => ({ cells: [r.account, esc(acct(r.account)?.name), TYPE_ID[acct(r.account)?.type] ?? "", M(r.debit) ? txt(M(r.debit)) : "", M(r.credit) ? txt(M(r.credit)) : ""] }));
+  const sd = tb.rows.reduce((s, r) => s + M(r.debit), 0n), sc = tb.rows.reduce((s, r) => s + M(r.credit), 0n);
+  return { sub: `Per ${dfmt(ui.f.asOf)} · dihitung oleh trialBalance() di posting core`,
+    actions: `<form data-form="filter" class="actions" aria-label="Tanggal neraca saldo">${inp("f", "asOf", ui.f.asOf, 'type="date" aria-label="Per tanggal"')}${sd === sc ? badge("success", "Seimbang") : badge("critical", "Tidak seimbang")}</form>`,
+    body: table([{ h: "Kode" }, { h: "Akun", cls: "trunc" }, { h: "Tipe" }, { h: "Debit (Rp)", num: true }, { h: "Kredit (Rp)", num: true }], rows, { foot: ["", "Jumlah", "", txt(sd), txt(sc)] }) };
+}
+function stmt(title, groups, foot) {
+  const rows = [];
+  for (const [label, items, total] of groups) {
+    rows.push({ attr: ' class="grp"', cells: [label, ""] });
+    for (const [a, v] of items) rows.push({ cells: [esc(a.name), fmt(v)] });
+    if (total !== undefined) rows.push({ attr: ' class="tot"', cells: [`Jumlah ${label.toLowerCase()}`, fmt(total)] });
+  }
+  return block(title, `<div class="stmt">${table([{ h: "Pos" }, { h: "Rp", num: true }], rows, { foot })}</div>`);
+}
+function vReports() {
+  const p = pl(ui.f.from, ui.f.to), b = bs(ui.f.to);
+  const plHtml = stmt("Laba rugi", [["Pendapatan", p.rev, p.tRev], ["Beban pokok", p.cogs, p.tCogs], ["Beban usaha", p.opex, p.tOpex], ...(p.other.length ? [["Lain-lain", p.other, p.tOther]] : [])],
+    ["Laba bersih", fmt(p.net)]);
+  const bsHtml = stmt("Posisi keuangan", [["Aset", b.a, b.tA], ["Liabilitas", b.l, b.tL], ["Ekuitas", [...b.e, [{ name: "Laba tahun berjalan" }, b.profit]], b.tE]],
+    ["Liabilitas dan ekuitas", fmt(b.tL + b.tE)]);
+  return { sub: `Laba rugi ${dfmt(ui.f.from)} sampai ${dfmt(ui.f.to)} · posisi keuangan per ${dfmt(ui.f.to)}`,
+    actions: `<form data-form="filter" class="actions" aria-label="Periode laporan">${inp("f", "from", ui.f.from, 'type="date" aria-label="Dari"')}${inp("f", "to", ui.f.to, 'type="date" aria-label="Sampai"')}${b.tA === b.tL + b.tE ? badge("success", "Aset = L + E") : badge("critical", "Tidak seimbang")}</form>`,
+    body: `<div class="statements">${plHtml}${bsHtml}</div><p class="meta" style="margin-top:16px">Laba tahun berjalan dihitung dari akun laba rugi, karena jurnal penutup akhir tahun belum dijalankan. Penyajian ringkas, bukan format lengkap PSAK.</p>` };
+}
+function vAccounts() {
+  const rows = Object.values(state.accounts).sort((a, b) => a.code.localeCompare(b.code)).map((a) => ({ cells: [
+    `<span class="id">${esc(a.code)}</span>`, esc(a.name), `${TYPE_ID[a.type]} · ${a.normal_balance}`, a.control ?? "",
+    Object.entries(state.defaults).filter(([, c]) => c === a.code).map(([r]) => ROLES[r]?.[0] ?? r).join(", "),
+    fmt(natural(a, bal(a.code))),
+    `<button class="btn btn--ghost btn--sm" type="button" data-act="toggle-account" data-id="${esc(a.code)}">${a.active ? "Nonaktifkan" : "Aktifkan"}</button>`] }));
+  ui.newAccount = () => form("account", "Akun baru", `
+      <div class="row2">${fld("account", "code", "Kode *", inp("account", "code"))}${fld("account", "name", "Nama *", inp("account", "name"))}</div>
+      <div class="row2">${fld("account", "type", "Tipe", sel("account", "type", TYPES.map((t) => [t, TYPE_ID[t]]), "expense"))}${fld("account", "normal_balance", "Saldo normal", sel("account", "normal_balance", [["debit", "Debit"], ["credit", "Kredit"], ["either", "Keduanya"]], "debit"))}</div>
+      <p class="meta">Mesin posting membaca tipe dan penanda akun, tidak pernah kodenya. Ganti nomor sesuka perusahaan.</p>`, "Tambah akun");
+  return { sub: `${Object.keys(state.accounts).length} akun · ${coa.accounts.length} dari template skill, sisanya ditambah perusahaan`,
+    actions: `<div class="actions"><button class="btn" type="button" data-act="new-account">Akun baru</button></div>`,
+    body: split(table([{ h: "Kode" }, { h: "Nama", cls: "trunc" }, { h: "Tipe · normal" }, { h: "Kontrol" }, { h: "Peran", cls: "trunc" }, { h: "Saldo (Rp)", num: true }, { h: "" }], rows), "") };
+}
+function vPeriods() {
+  const rows = Object.entries(state.periods).map(([m, s]) => {
+    const n = live().filter((e) => e.posting_date.startsWith(m)).length;
+    return { cells: [m, s === "open" ? badge("success", "Terbuka") : badge("neutral", "Ditutup"), String(n),
+      `<button class="btn btn--ghost btn--sm" type="button" data-act="toggle-period" data-id="${m}">${s === "open" ? "Tutup periode" : "Buka kembali"}</button>`] };
+  });
+  return { sub: "Posting ke periode tertutup ditolak oleh validateEntry()", body: table([{ h: "Periode" }, { h: "Status" }, { h: "Jurnal", num: true }, { h: "" }], rows) };
+}
+function vConfig() {
+  const opts = [["", "Belum diatur"], ...postable().map((a) => [a.code, `${a.code} ${a.name}`])];
+  const roles = form("defaults", "Penentuan akun", `<p class="meta">Modul mengirim nominal per peran; tabel ini memilih akunnya. Peran yang kosong menolak posting, tidak dialihkan ke akun penampung.</p>
+      ${Object.entries(ROLES).map(([k, [l]]) => fld("defaults", `role_${k}`, l, sel("defaults", `role_${k}`, opts, state.defaults[k] ?? ""), k)).join("")}`, "Simpan penentuan akun");
+  const company = form("company", "Perusahaan", `
+      ${fld("company", "name", "Nama", inp("company", "name", state.company.name))}
+      ${check("company", "pkp", "Pengusaha Kena Pajak (PKP)", state.company.pkp)}
+      ${fld("company", "term_days", "Termin pembayaran (hari)", inp("company", "term_days", String(state.company.term_days), 'inputmode="numeric"'))}`, "Simpan");
+  const reset = form("reset", "Data contoh", `<p class="meta">Data tersimpan hanya di peramban ini. Muat ulang mengganti semua transaksi dengan contoh awal.</p>`, "Muat ulang data contoh", { confirm: "Klik lagi untuk menghapus semua data" });
+  const tax = table([{ h: "Pajak" }, { h: "Berlaku" }, { h: "Dasar", cls: "trunc" }, { h: "Sumber", cls: "trunc" }, { h: "Status", cls: "trunc" }],
+    state.tax.map((t) => ({ cells: [t.code, dfmt(t.from), esc(t.label), esc(t.source), esc(t.status)] })));
+  return { sub: "Yang berbeda per perusahaan adalah data, bukan kode", body: split(
+    block("Parameter pajak berlaku-tanggal", tax, `<span class="meta">Dari values-to-verify.md di skill. Cek ulang ke regulasi terbaru sebelum dipakai.</span>`) + company + reset, roles) };
+}
+const VIEWS = {
+  dasbor: ["Ringkasan", "Dasbor", vDash],
+  penjualan: ["Transaksi", "Penjualan dan piutang", vSales],
+  pembelian: ["Transaksi", "Pembelian dan utang", vPurch],
+  aset: ["Transaksi", "Aset tetap", vAssets],
+  pajak: ["Transaksi", "Pajak", vTax],
+  jurnal: ["Buku besar", "Jurnal", vJournal],
+  "buku-besar": ["Buku besar", "Buku besar", vLedger],
+  "neraca-saldo": ["Buku besar", "Neraca saldo", vTB],
+  laporan: ["Buku besar", "Laporan keuangan", vReports],
+  akun: ["Pengaturan", "Bagan akun", vAccounts],
+  periode: ["Pengaturan", "Periode", vPeriods],
+  konfigurasi: ["Pengaturan", "Konfigurasi", vConfig],
+};
+
+// ---------------------------------------------------------------- render and events
+let lineTpl = null;
+const viewId = () => (VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : "dasbor");
+function render() {
+  const id = viewId(), [, title, fn] = VIEWS[id];
+  const groups = {};
+  for (const [k, [g, t]] of Object.entries(VIEWS)) (groups[g] ??= []).push(`<li><a href="#${k}"${k === id ? ' aria-current="page"' : ""}>${t}</a></li>`);
+  document.getElementById("nav").innerHTML = Object.entries(groups).map(([g, items]) => `<h2>${g}</h2><ul>${items.join("")}</ul>`).join("");
+  document.getElementById("company").textContent = state.company.name;
+  document.getElementById("user").value = state.user;
+  const v = fn();
+  lineTpl = v.lineTpl ?? null;
+  document.getElementById("main").innerHTML = `<header class="toolbar"><div><h1>${title}</h1><p class="meta">${v.sub ?? ""}</p></div>${v.actions ?? ""}</header><div class="content">${v.body}</div>`;
+  document.querySelectorAll('form[data-form="receipt"],form[data-form="payment"]').forEach(suggest);
+}
+function suggest(form) {
+  const f = Object.fromEntries(new FormData(form)), d = state.docs.find((x) => x.no === f.ref);
+  if (!d) return;
+  const svc = form.dataset.form === "receipt" ? "service" : "purchase_service", cb = form.elements.pph23;
+  cb.disabled = d.kind !== svc;
+  if (cb.disabled) cb.checked = false;
+  const rem = openAmt(d);
+  let w = 0n;
+  try { if (cb.checked) w = M(taxAmt("PPh 23", d.dpp, f.date || d.date)); } catch {}
+  form.elements.bank.value = txt(rem - w);
+  const h = form.querySelector('[data-help="bank"]');
+  h.textContent = h.dataset.orig = `Sisa ${txt(rem)}${w ? `, PPh 23 ${txt(w)} dicatat sebagai ${form.dataset.form === "receipt" ? "pajak dibayar di muka" : "utang PPh 23"}` : ""}.`;
+}
+function showErrors(form, r) {
+  if (r.field) {
+    const h = form.querySelector(`[data-help="${r.field}"]`);
+    const el = form.elements[r.field];
+    if (h) { h.textContent = r.errors[0]; h.classList.add("err"); }
+    if (el?.setAttribute) { el.setAttribute("aria-invalid", "true"); el.focus(); }
+    if (h) return;
+  }
+  form.querySelector("[data-status]").innerHTML = `<div class="note note--bad" role="alert"><strong>Ditolak</strong><ul>${(r.errors ?? []).map((e) => {
+    const t = idErr(e);
+    return `<li>${esc(t)}${t !== e ? `<br><span class="meta">posting core: ${esc(e)}</span>` : ""}</li>`;
+  }).join("")}</ul></div>`;
+}
+// The core speaks English; the screen speaks Indonesian and shows both.
+const ERR = [
+  [/^entry does not balance: debit (.+), credit (.+)$/, "Jurnal tidak seimbang: debit $1, kredit $2"],
+  [/^period is closed for (.+)$/, "Periode tertutup untuk tanggal $1"],
+  [/^approver must differ from maker$/, "Penyetuju harus pengguna lain, bukan pembuat jurnal"],
+  [/^line (\d+): account (.+) is inactive$/, "Baris $1: akun $2 nonaktif"],
+  [/^line (\d+): account (.+) is a group account$/, "Baris $1: akun $2 adalah akun induk"],
+  [/^line (\d+): (.+) is a control account and takes no manual posting$/, "Baris $1: $2 akun kontrol, hanya diisi dari dokumen modul"],
+  [/^line (\d+): exactly one of debit and credit must be above zero$/, "Baris $1: isi debit atau kredit, salah satu saja"],
+  [/^line (\d+): unknown account (.+)$/, "Baris $1: akun $2 tidak dikenal"],
+  [/^an entry needs at least two lines$/, "Jurnal butuh minimal dua baris"],
+  [/^no account configured for role "(.+)"$/, "Belum ada akun untuk peran $1. Atur di Konfigurasi."],
+];
+const idErr = (e) => { for (const [re, t] of ERR) if (re.test(e)) return e.replace(re, t); return e; };
+function clearHelp(form) {
+  form.querySelectorAll(".help.err").forEach((h) => { h.textContent = h.dataset.orig; h.classList.remove("err"); });
+  form.querySelectorAll('[aria-invalid="true"]').forEach((el) => el.removeAttribute("aria-invalid"));
+  form.querySelector("[data-status]")?.replaceChildren();
+}
+document.addEventListener("submit", (ev) => {
+  const form = ev.target.closest("form[data-form]");
+  if (!form) return;
+  ev.preventDefault();
+  if (form.dataset.confirm && !form.dataset.armed) {
+    form.dataset.armed = "1";
+    const b = form.querySelector("[type=submit]");
+    b.textContent = form.dataset.confirm; b.classList.add("btn--danger");
+    return;
+  }
+  clearHelp(form);
+  const f = Object.fromEntries(new FormData(form));
+  let r;
+  try { r = H[form.dataset.form](f); } catch (e) { r = { ok: false, errors: [e.message], field: e.field }; }
+  if (!r.ok) { showErrors(form, r); return; }
+  if (r.flash) ui.flash = r.flash;
+  if (r.sel !== undefined) ui.sel = r.sel;
+  render();
+});
+document.addEventListener("change", (ev) => {
+  const form = ev.target.closest("form[data-form]");
+  if (!form) return;
+  if (form.dataset.form === "filter") form.requestSubmit();
+  else if ((form.dataset.form === "receipt" || form.dataset.form === "payment") && ev.target.name !== "bank") suggest(form);
+});
+function act(el) {
+  const a = el.dataset.act, id = el.dataset.id;
+  if (a === "entry" || a === "doc") { ui.sel = { type: a, id }; render(); }
+  else if (a === "new-account") { ui.sel = { type: "new-account" }; render(); document.getElementById("account-code")?.focus(); }
+  else if (a === "close") { ui.sel = null; render(); }
+  else if (a === "addline" && lineTpl) {
+    const tb = document.querySelector("[data-lines]");
+    tb.insertAdjacentHTML("beforeend", lineTpl(tb.children.length));
+  } else if (a === "toggle-period") {
+    tx(() => { state.periods[id] = state.periods[id] === "open" ? "closed" : "open"; return { ok: true }; });
+    ui.flash = `Periode ${id} ${state.periods[id] === "open" ? "dibuka kembali" : "ditutup. Posting dengan tanggal di bulan ini akan ditolak"}.`;
+    render();
+  } else if (a === "toggle-account") {
+    tx(() => { state.accounts[id].active = !state.accounts[id].active; return { ok: true }; });
+    ui.flash = `Akun ${id} ${state.accounts[id].active ? "diaktifkan" : "dinonaktifkan. Posting ke akun ini akan ditolak"}.`;
+    render();
+  }
+}
+document.addEventListener("click", (ev) => {
+  const go = ev.target.closest("[data-goto]");
+  if (go) { ui.sel = { type: "entry", id: go.dataset.goto }; if (viewId() === "jurnal") { ev.preventDefault(); render(); } return; }
+  const el = ev.target.closest("[data-act]");
+  if (el) act(el);
+});
+document.addEventListener("keydown", (ev) => {
+  const row = ev.target.closest?.("tr[data-act]");
+  if (row && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); act(row); }
+  if (ev.key === "Escape" && ui.sel) { ui.sel = null; render(); }
+});
+// a selected journal survives only the jump to the journal list (the data-goto link)
+addEventListener("hashchange", () => { if (!(ui.sel?.type === "entry" && viewId() === "jurnal")) ui.sel = null; render(); });
+document.getElementById("user").addEventListener("change", (ev) => { state.user = ev.target.value; save(); render(); });
+const dens = document.getElementById("density");
+try { dens.value = localStorage.getItem("nito-ledger-density") ?? ""; } catch {}
+document.documentElement.dataset.density = dens.value;
+dens.addEventListener("change", () => { document.documentElement.dataset.density = dens.value; try { localStorage.setItem("nito-ledger-density", dens.value); } catch {} });
+
+// ---------------------------------------------------------------- boot
+try {
+  coa = await (await fetch(COA_URL)).json();
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORE)); } catch {}
+  state = saved?.v === 1 ? saved : seed();
+  render();
+} catch (e) {
+  document.getElementById("main").innerHTML = `<div class="content"><div class="note note--bad" role="alert"><strong>Gagal memuat</strong><span>${esc(e.message)}. Buka lewat server lokal, bukan file://.</span></div></div>`;
+}
+window.__ledger = { get state() { return state; }, checks, core, seed, H };
+</script>
