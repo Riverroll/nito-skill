@@ -35,11 +35,18 @@ export const EVENTS = {
   sale_invoice:           { debit: ["receivable"], credit: ["sales", "tax_output_ppn"] },                 // A1
   sale_cogs:              { debit: ["cogs"], credit: ["inventory"] },                                     // A1
   service_invoice:        { debit: ["receivable"], credit: ["service_revenue", "tax_output_ppn"] },       // A2
-  receipt_in:             { debit: ["bank", "prepaid_tax_22_23_25"], credit: ["receivable"] },            // A2, PPh 23 cut by the customer
+  receipt_in:             { debit: ["bank", "prepaid_tax_22_23_25", "bank_charges"], credit: ["receivable"] }, // A2 PPh 23 cut, C4 fee deducted
   goods_receipt:          { debit: ["inventory"], credit: ["stock_received_not_billed"] },                // P1
   vendor_invoice:         { debit: ["stock_received_not_billed", "tax_input_ppn"], credit: ["payable"] }, // P1
   vendor_service_invoice: { debit: ["service_expense", "tax_input_ppn"], credit: ["payable"] },           // P2
-  payment_out:            { debit: ["payable"], credit: ["bank", "wht_payable_23"] },                     // P1, P2 net of PPh 23
+  payment_out:            { debit: ["payable", "bank_charges"], credit: ["bank", "wht_payable_23"] },     // P1, P2 net of PPh 23, C1 transfer fee
+  cash_transfer:          { debit: ["bank_in"], credit: ["bank_out"] },                                   // C2, between two cash or bank accounts
+  // A bank-statement line with no document behind it (interest, charges). The
+  // user picks the counterpart account, as on a statement line in Odoo; the
+  // service must refuse control accounts there, which validateEntry does not
+  // know to do because the entry carries a source.
+  cash_receipt_other:     { debit: ["bank"], credit: ["counterpart"] },                                   // C1 interest
+  cash_payment_other:     { debit: ["counterpart"], credit: ["bank"] },                                   // C1 bank charges
   ppn_settlement:         { debit: ["tax_output_ppn", "ppn_receivable"], credit: ["tax_input_ppn", "ppn_payable"] }, // V2, V3
   tax_payment:            { debit: ["ppn_payable", "wht_payable_23"], credit: ["bank"] },                 // V2, P2 remittance
   asset_acquisition:      { debit: ["fixed_asset", "tax_input_ppn"], credit: ["payable"] },               // F1
@@ -57,6 +64,12 @@ export function percentOf(amount, num, den) {
 
 // request: { event_type, amounts: { role: "decimal string" }, ...header fields }
 // defaults: { role: account_code }  (the company's account-determination keys)
+//
+// A company with several cash and bank accounts keeps one payment journal per
+// account (Kas, Bank BCA, Bank Mandiri). The user picks the journal; the
+// service passes that journal's account for the role, never a code the module
+// made up: buildEntry(req, { ...defaults, bank: journal.account }). A transfer
+// fills bank_in and bank_out the same way.
 // Returns { ok: true, entry } or { ok: false, errors: [...] }.
 export function buildEntry(request, defaults) {
   const errors = [];

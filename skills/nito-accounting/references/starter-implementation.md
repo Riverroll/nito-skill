@@ -15,7 +15,7 @@ then extend them. Do not redesign the ledger per project.
 | File | What it is | How it was checked |
 |---|---|---|
 | `assets/ledger-schema.prisma` | Six tables: accounts, default accounts, periods, numbering counter, entry header, entry lines | `prisma validate` on Prisma 7 reports the schema valid. Not migrated to a database. |
-| `assets/posting-core.mjs` | Pure functions: `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `percentOf`, `toMinor`, `fromMinor`; twelve events | `test/accounting.mjs` replays worked entries A1, A2, P1, P2, V2, V3, F1 and F2 and checks every rejection rule |
+| `assets/posting-core.mjs` | Pure functions: `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `percentOf`, `toMinor`, `fromMinor`; fifteen events | `test/accounting.mjs` replays worked entries A1, A2, P1, P2, V2, V3, F1, F2, C1, C2 and C4 and checks every rejection rule |
 | `assets/coa-template-id.json` | Default chart, 29 accounts | `test/accounting.mjs` checks codes, types and normal balances |
 
 The schema follows the naming already used in the owner's projects (`T_M_`
@@ -156,25 +156,44 @@ The module computes the business amounts (price, discount, tax) and never
 names an account. `EVENTS` in `posting-core.mjs` decides the side of each
 role, and the company's default accounts decide the account.
 
-`EVENTS` ships with twelve events, each the shape of a worked entry:
+`EVENTS` ships with fifteen events, each the shape of a worked entry:
 
 | Event | Debit roles | Credit roles | Worked entry |
 |---|---|---|---|
 | `sale_invoice` | receivable | sales, tax_output_ppn | A1 |
 | `sale_cogs` | cogs | inventory | A1 |
 | `service_invoice` | receivable | service_revenue, tax_output_ppn | A2 |
-| `receipt_in` | bank, prepaid_tax_22_23_25 | receivable | A2 (PPh 23 cut by the customer) |
+| `receipt_in` | bank, prepaid_tax_22_23_25, bank_charges | receivable | A2 (PPh 23 cut by the customer), C4 (fee deducted) |
 | `goods_receipt` | inventory | stock_received_not_billed | P1 |
 | `vendor_invoice` | stock_received_not_billed, tax_input_ppn | payable | P1 |
 | `vendor_service_invoice` | service_expense, tax_input_ppn | payable | P2 |
-| `payment_out` | payable | bank, wht_payable_23 | P1, P2 (PPh 23 withheld) |
+| `payment_out` | payable, bank_charges | bank, wht_payable_23 | P1, P2 (PPh 23 withheld), C1 (transfer fee) |
+| `cash_transfer` | bank_in | bank_out | C2 (bank to petty cash) |
+| `cash_receipt_other` | bank | counterpart | C1 (interest) |
+| `cash_payment_other` | counterpart | bank | C1 (bank charges) |
 | `ppn_settlement` | tax_output_ppn, ppn_receivable | tax_input_ppn, ppn_payable | V2, V3 |
 | `tax_payment` | ppn_payable, wht_payable_23 | bank | V2, P2 |
 | `asset_acquisition` | fixed_asset, tax_input_ppn | payable | F1 |
 | `depreciation` | depreciation_expense | accumulated_depreciation | F2 |
 
 A role left out of the request is skipped, so one event covers the sale with
-and without PPN, and the payment with and without withholding. Every other
+and without PPN, and the payment with and without withholding.
+
+**Several cash and bank accounts.** Keep one payment journal per account
+(Kas, Bank BCA, Bank Mandiri), each with its own numbering. The user picks
+the journal when registering a payment; the service passes that journal's
+account for the role: `buildEntry(req, { ...defaults, bank: journal.account })`.
+A transfer fills `bank_in` and `bank_out` the same way, and posts in the
+journal of the account the money leaves. For `cash_receipt_other` and
+`cash_payment_other` the user picks the `counterpart`; the service must
+refuse a control account or another cash account there, because the entry
+carries a source and `validateEntry` lets it through.
+
+**Bank reconciliation** is a record beside the ledger, never an edit of it:
+one row per matched line (entry number and line), the statement date and
+balance per account. Matched lines summed equal the statement balance; the
+book balance equals the statement plus deposits in transit minus payments not
+yet cleared (worked entry C1). Every other
 event in the catalogue in `posting-contract.md` (returns, advances, payroll,
 imports, FX revaluation and the rest) is added the same way: take the worked
 entry with that reference from the topic file, list its debit roles and
@@ -190,8 +209,9 @@ PPh was not settled by the research; confirm it before relying on it.
 ## A working consumer
 
 `example/ledger/index.html` in the nito-skill repo is an accounting ERP built
-on this starter, in one file: sales, purchases, receipts, payments, fixed
-assets, depreciation, PPN settlement, tax payments, manual journals with
+on this starter, in one file: sales, purchases, register payment into a
+chosen cash or bank account with fees and part payments, transfers, other
+cash lines, bank reconciliation, fixed assets, depreciation, PPN settlement, tax payments, manual journals with
 maker-checker approval, cancellation by reversal, period locks, the trial
 balance, the general ledger and the two statements. It imports
 `posting-core.mjs` unchanged and keeps its "database" in the browser, so the

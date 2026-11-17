@@ -93,7 +93,8 @@ const defaults = { receivable: "1-1300", sales: "4-1000", tax_output_ppn: "2-140
                    payable: "2-1100", bank: "1-1200", service_revenue: "4-2000",
                    prepaid_tax_22_23_25: "1-1800", service_expense: "6-0000", wht_payable_23: "2-1510",
                    ppn_payable: "2-1410", ppn_receivable: "1-1750", fixed_asset: "1-2100",
-                   accumulated_depreciation: "1-2190", depreciation_expense: "6-2000" };
+                   accumulated_depreciation: "1-2190", depreciation_expense: "6-2000",
+                   bank_charges: "6-0000", bank_in: "1-1100", bank_out: "1-1200", counterpart: "7-0000" };
 const accounts = Object.fromEntries([...coa.accounts.map((a) => a.code), "2-1150", "2-1410", "1-1750", "6-2000"].map((c) =>
   [c, { active: true, postable: true, control: ["1-1300", "2-1100", "1-1500"].includes(c) }]));
 const ctx = { accounts, isPeriodOpen: (d) => d >= "2026-01-01" && d <= "2026-12-31" };
@@ -135,7 +136,18 @@ const more = [
   ["V3 PPN carry forward", "ppn_settlement", { tax_output_ppn: "60000000.00", ppn_receivable: "25000000.00", tax_input_ppn: "85000000.00" }, "85000000.00"],
   ["F1 asset acquisition", "asset_acquisition", { fixed_asset: "128000000.00", tax_input_ppn: "14080000.00", payable: "142080000.00" }, "142080000.00"],
   ["F2 depreciation", "depreciation", { depreciation_expense: "24000000.00", accumulated_depreciation: "24000000.00" }, "24000000.00"],
+  ["C4 settlement net of a fee", "receipt_in", { bank: "1087800.00", bank_charges: "22200.00", receivable: "1110000.00" }, "1110000.00"],
+  ["C2 petty cash set-up", "cash_transfer", { bank_in: "5000000.00", bank_out: "5000000.00" }, "5000000.00"],
+  ["C1 interest", "cash_receipt_other", { bank: "250000.00", counterpart: "250000.00" }, "250000.00"],
+  ["C1 bank charges", "cash_payment_other", { counterpart: "150000.00", bank: "150000.00" }, "150000.00"],
+  // P1's payment with C1's bank charge on the transfer: no single worked entry, the two shapes combined
+  ["P1 + C1 payment with a transfer fee", "payment_out", { payable: "88800000.00", bank_charges: "150000.00", bank: "88950000.00" }, "88950000.00"],
 ];
+{
+  // choosing the payment journal changes the account, not the event
+  const b = core.buildEntry({ event_type: "payment_out", amounts: { payable: "100.00", bank: "100.00" }, ...head(60) }, { ...defaults, bank: "1-1100" });
+  ok("core: a chosen payment journal supplies the bank account", b.ok && b.entry.lines.find((l) => l.role === "bank").account === "1-1100");
+}
 more.forEach(([ref, ev, amt, total], i) => {
   const r = post(ev, amt, 40 + i);
   ok(`core: ${ref} replays through ${ev}`, r.ok && r.total === total, JSON.stringify(r.errors ?? r.total));
