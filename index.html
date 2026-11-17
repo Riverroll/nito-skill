@@ -87,7 +87,42 @@
   .section--alt .tile { background: var(--surface); }
   .tile h3 { font: 600 21px/1.1904761905 var(--font-display); letter-spacing: .011em; }
   .tile p { margin-top: 0.8em; font: 400 17px/1.4705882353 var(--font-text); letter-spacing: -0.022em; color: var(--ink-secondary); }
+  /* tile glyphs: drawn in the page's own accent and muted ink, so they follow the theme */
+  .ic { display: block; width: 48px; height: 48px; margin-bottom: 20px; fill: none; stroke: var(--accent); stroke-width: 2;
+        stroke-linecap: round; stroke-linejoin: round; }
+  .ic .m { stroke: var(--ink-muted); } .ic .f { fill: var(--accent); stroke: none; } .ic .b { stroke-width: 4; }
   @media (max-width: 1068px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  /* the posting flow: modules fan into one core, the core writes one balanced entry */
+  .flow { width: 100%; max-width: 1068px; margin-top: 48px; display: grid; align-items: center; text-align: left;
+          grid-template-columns: minmax(0, 1.2fr) 96px minmax(0, 1fr) 64px minmax(0, 1fr); }
+  .flow ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .flow li { height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 16px;
+             border-radius: var(--radius-tile); box-shadow: inset 0 0 0 1px var(--hairline); }
+  .flow li code { font-size: 12px; color: var(--ink-inverse-muted); }
+  .flow svg { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+  .flow-fan { align-self: stretch; width: 100%; height: 100%; }
+  .flow-down { display: none; }
+  .flow-to { width: 100%; height: 24px; }
+  .flow-box { border-radius: var(--radius-card); padding: 28px; }
+  .flow-box > * { display: block; } .flow-box > * + * { margin-top: 8px; }
+  .flow-box b { font: 600 28px/1.1428571429 var(--font-display); letter-spacing: .007em; }
+  .flow-core { background: var(--accent); color: var(--on-accent); }
+  .flow-ledger { box-shadow: inset 0 0 0 1px var(--hairline); }
+  .flow-ledger .t-body-reduced, .flow-core span { font: 400 14px/1.2857742857 var(--font-text); letter-spacing: -0.016em; }
+  .flow-t { display: grid; grid-template-columns: 1fr 1fr; margin-top: 8px; font: 400 14px/1.2857742857 var(--font-text); letter-spacing: -0.016em;
+            font-variant-numeric: tabular-nums; }
+  .flow-t span { padding: 8px 0; border-bottom: 1px solid var(--hairline); }
+  .flow-t span:nth-child(odd) { border-right: 1px solid var(--hairline); padding-right: 12px; }
+  .flow-t span:nth-child(even) { padding-left: 12px; text-align: right; }
+  @media (max-width: 1068px) {
+    .flow { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .flow ul { display: flex; flex-wrap: wrap; gap: 8px; }
+    .flow li code { display: none; }
+    .flow-fan { display: none; }
+    .flow-down { display: block; width: 24px; height: 32px; justify-self: center; }
+    .flow-to { width: 32px; height: 24px; justify-self: center; transform: rotate(90deg); }
+  }
   @media (max-width: 734px)  { .grid, .stats { grid-template-columns: minmax(0, 1fr); } }
 
   /* the live journal: the real posting core, in the page */
@@ -193,7 +228,7 @@
       <div class="stats">
         <div class="stat" data-reveal><b>106</b><span class="t-body-reduced">type classes read from apple.com's shipped stylesheets</span></div>
         <div class="stat" data-reveal><b>338</b><span class="t-body-reduced">headlines counted for the copy rules</span></div>
-        <div class="stat" data-reveal><b>106</b><span class="t-body-reduced">worked journal entries, each re-added by a test</span></div>
+        <div class="stat" data-reveal><b>126</b><span class="t-body-reduced">worked journal entries, each re-added by a test</span></div>
         <div class="stat" data-reveal><b>65</b><span class="t-body-reduced">posting events, each replaying one of those entries</span></div>
       </div>
     </div>
@@ -242,15 +277,15 @@
     <div class="section-content">
       <h2 class="t-headline" data-reveal>What it covers.</h2>
       <div class="grid">
-        <div class="tile stagger-item" data-reveal><h3>Restraint</h3><p>One accent, three ink steps, three radii, two weights. The audit counts them.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Type scale</h3><p>All 106 measured classes, and tracking that crosses zero at 40px.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Rhythm</h3><p>Spacing in em, so the gap scales with the type above it.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Motion</h3><p>Five curves ranked by use, reveals, stagger and sticky parallax.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Moving pictures</h3><p>Six-file clip ladders, a still underneath, clips rendered when there is no footage.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Composition</h3><p>A subject on every screen, scale contrast, and a pace that changes.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Dense tools</h3><p>Table and form contracts for ERPs and admin panels.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>Headlines</h3><p>Short, declarative, ending in a full stop. Three words is the median.</p></div>
-        <div class="tile stagger-item" data-reveal><h3>The audit</h3><p><code>tools/audit.mjs</code> scores any live URL, in marketing or ERP mode.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><circle class="f" cx="12" cy="24" r="7"/><circle class="m" cx="29" cy="24" r="5"/><circle class="m" cx="41" cy="24" r="3"/></svg><h3>Restraint</h3><p>One accent, three ink steps, three radii, two weights. The audit counts them.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><path class="m" d="M4 40l4-10 4 10M5.6 36h4.8"/><path class="m" d="M15 40l6-15 6 15M17.4 34h7.2"/><path d="M29 40l8-22 8 22M32.2 32h9.6"/></svg><h3>Type scale</h3><p>All 106 measured classes, and tracking that crosses zero at 40px.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><path class="b" d="M8 12h26"/><path class="m" d="M8 24h32M8 31h32M8 38h20"/></svg><h3>Rhythm</h3><p>Spacing in em, so the gap scales with the type above it.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><path class="m" d="M8 8v32h32"/><path d="M8 40C20.8 40 27.2 8 40 8"/><circle class="f" cx="40" cy="8" r="3"/></svg><h3>Motion</h3><p>Five curves ranked by use, reveals, stagger and sticky parallax.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><rect x="5" y="10" width="38" height="28" rx="6"/><path class="f" d="M20 18v12l10-6z"/></svg><h3>Moving pictures</h3><p>Six-file clip ladders, a still underneath, clips rendered when there is no footage.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><rect class="m" x="5" y="8" width="38" height="32" rx="4"/><path class="f" d="M43 25.4A14 14 0 0 0 21.1 40H43z"/></svg><h3>Composition</h3><p>A subject on every screen, scale contrast, and a pace that changes.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><rect class="m" x="5" y="8" width="38" height="32" rx="4"/><path d="M5 16h38"/><path class="m" d="M5 24h38M5 32h38"/><path d="M35 20h4M31 28h8M33 36h6"/></svg><h3>Dense tools</h3><p>Table and form contracts for ERPs and admin panels.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><path class="b" d="M8 20h26"/><path class="b" d="M8 30h16"/><circle class="f" cx="30" cy="30" r="2.5"/></svg><h3>Headlines</h3><p>Short, declarative, ending in a full stop. Three words is the median.</p></div>
+        <div class="tile stagger-item" data-reveal><svg class="ic" viewBox="0 0 48 48" aria-hidden="true"><circle class="m" cx="24" cy="24" r="17"/><path d="M24 7a17 17 0 1 1-16.2 11.8"/><path d="M17 24.5l5 5 9-10"/></svg><h3>The audit</h3><p><code>tools/audit.mjs</code> scores any live URL, in marketing or ERP mode.</p></div>
       </div>
     </div>
   </section>
@@ -260,6 +295,24 @@
       <p class="t-eyebrow" data-reveal>nito-accounting</p>
       <h2 class="t-headline-elevated" data-reveal>Books that balance.</h2>
       <p class="t-intro" data-reveal>Modules send amounts by role. One posting core turns them into balanced entries and refuses the rest. The chart changes per company; the core does not. Try it.</p>
+      <div class="flow" data-reveal role="img" aria-label="Sales, purchasing, inventory, payroll and assets each send one event to the posting core. The core writes one entry to the ledger where debit equals credit, or refuses it.">
+        <ul>
+          <li>Sales <code>sale_invoice</code></li>
+          <li>Purchasing <code>vendor_invoice</code></li>
+          <li>Inventory <code>stock_issue</code></li>
+          <li>Payroll <code>payroll_accrual</code></li>
+          <li>Assets <code>depreciation</code></li>
+        </ul>
+        <svg class="flow-fan" viewBox="0 0 96 268" preserveAspectRatio="none" aria-hidden="true">
+          <path vector-effect="non-scaling-stroke" d="M0 22C56 22 40 134 96 134M0 78C56 78 40 134 96 134M0 134H96M0 190C56 190 40 134 96 134M0 246C56 246 40 134 96 134"/>
+        </svg>
+        <svg class="flow-down" viewBox="0 0 24 32" aria-hidden="true"><path d="M12 2v26M5 21l7 7 7-7"/></svg>
+        <div class="flow-box flow-core"><b>Posting core</b><span>Picks the accounts, checks the period, balances or refuses.</span></div>
+        <svg class="flow-to" viewBox="0 0 64 24" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M4 12h54M51 5l7 7-7 7"/></svg>
+        <div class="flow-box flow-ledger"><b>Ledger</b>
+          <div class="flow-t"><span>Debit</span><span>Credit</span><span>105.450.000</span><span>105.450.000</span></div>
+          <span class="t-body-reduced">Numbered without gaps. Never edited.</span></div>
+      </div>
       <div class="demo" data-reveal>
         <form id="demo" novalidate>
           <label>Sale
