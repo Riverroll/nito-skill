@@ -174,10 +174,12 @@ try {
     const row = document.querySelector('tr[data-act="doc"][data-id="INV/2026/0001"]'); row.click();
     const p = document.querySelector(".side-col .panel");
     return { title: p?.querySelector("h2")?.textContent, id: row.dataset.id, lines: p?.querySelectorAll(".lines table").length,
-      cancel: !!document.querySelector('form[data-form="cancel"]') };
+      cancel: !!document.querySelector('form[data-form="cancel"]'),
+      wide: [...p.querySelectorAll(".tw")].filter((t) => t.scrollWidth > t.clientWidth + 1).length };
   })()`);
   ok("a document row opens its inspector, with its journals and a cancel action",
     insp.title === insp.id && insp.lines >= 1 && insp.cancel, JSON.stringify(insp));
+  ok("the journal lines fit the inspector without scrolling sideways", insp.wide === 0, `${insp.wide} table(s) scroll`);
 
   // ---- the statements on screen agree with each other
   await open(1440, "#laporan");

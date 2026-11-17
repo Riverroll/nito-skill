@@ -146,7 +146,13 @@ dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;margin:0}
 dt{color:var(--ink-muted)} dd{margin:0;min-width:0;overflow-wrap:anywhere}
 dd.num{text-align:left}
 .lines td{height:32px}
-.lines .acct{max-width:180px;overflow:hidden;text-overflow:ellipsis}
+/* fixed layout: the account name gives way, the amount never does */
+.lines table{table-layout:fixed}
+.lines th:nth-child(2){width:24px}
+.lines th:nth-child(3){width:128px}
+.lines .acct,.lines tfoot td:first-child{overflow:hidden;text-overflow:ellipsis}
+.lines tr.cr td:first-child{padding-left:24px}
+.lines td:nth-child(2){color:var(--ink-muted);padding-inline:4px}
 .stmt td:first-child{padding-left:24px}
 .stmt tr.grp td{font-weight:600;padding-left:12px;color:var(--ink-secondary)}
 .stmt tr.tot td{font-weight:600}
@@ -709,10 +715,17 @@ function flashHtml() {
   ui.flash = null;
   return h;
 }
+// Journal form for a narrow panel: one amount column, D or K beside it, credit
+// lines indented as a hand-written journal does. Debits then credits.
 function linesTable(e) {
-  const rows = e.lines.map((l) => ({ cells: [esc(aname(l.account)) + (l.party ? ` · ${esc(party(l.party))}` : ""), M(l.debit) ? txt(M(l.debit)) : "", M(l.credit) ? txt(M(l.credit)) : ""] }));
-  const t = e.lines.reduce((s, l) => s + M(l.debit), 0n);
-  return `<div class="lines">${table([{ h: "Akun", cls: "acct" }, { h: "Debit", num: true }, { h: "Kredit", num: true }], rows, { foot: ["Jumlah", txt(t), txt(t)] })}</div>`;
+  const order = [...e.lines.filter((l) => M(l.debit)), ...e.lines.filter((l) => !M(l.debit))];
+  const rows = order.map((l) => {
+    const dr = M(l.debit) > 0n;
+    return { attr: dr ? "" : ' class="cr"', cells: [esc(acct(l.account)?.name ?? l.account) + (l.party ? ` · ${esc(party(l.party))}` : ""), dr ? "D" : "K", txt(dr ? M(l.debit) : M(l.credit))] };
+  });
+  const d = e.lines.reduce((s, l) => s + M(l.debit), 0n), c = e.lines.reduce((s, l) => s + M(l.credit), 0n);
+  return `<div class="lines">${table([{ h: "Akun", cls: "acct" }, { h: "" }, { h: "Rp", num: true }], rows,
+    { foot: [d === c ? "Debit = kredit" : "Tidak seimbang", "", txt(d)] })}</div>`;
 }
 function entryHead(e) {
   return `<dl>
