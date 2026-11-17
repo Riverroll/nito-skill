@@ -38,6 +38,7 @@ On the purchase side, AP is the supplier subledger tied to Utang Usaha with a th
 | P5 | Import: CIF 50,000,000, duty 5% (assumed), PPN impor on 52,500,000, PPh 22 at 2.5% (UNVERIFIED base and rate) | Persediaan 52,500,000; PPN Masukan 5,775,000; PPh 22 Dibayar di Muka 1,312,500 | Utang Usaha 50,000,000; Bank 9,587,500 | 59,587,500 |
 | P6 | Purchase return, DPP 10,000,000, PPN 1,100,000 | Utang Usaha 11,100,000 | Persediaan 10,000,000; PPN Masukan 1,100,000 | 11,100,000 |
 | P7 | Vendor prepayment, DPP 20,000,000, PPN 2,200,000 | Uang Muka Pembelian 20,000,000; PPN Masukan 2,200,000 | Bank 22,200,000 | 22,200,000 |
+| P7 | Final service invoice, DPP 40,000,000, total PPN 4,400,000, the advance deducted | Beban Jasa 40,000,000; PPN Masukan 2,200,000 | Uang Muka Pembelian 20,000,000; Utang Usaha 22,200,000 | 42,200,000 |
 | P8 | Period-end accrual, services not invoiced | Beban Jasa 20,000,000 | Biaya yang Masih Harus Dibayar 20,000,000 | 20,000,000 |
 | P9 | Non-resident fee 100,000,000: PPh 26 at 20%, self-assessed PPN 11,000,000 (no treaty, no PMSE collector) | Beban Jasa 100,000,000; PPN Masukan (JLN) 11,000,000 | Bank 80,000,000; Utang PPh 26 20,000,000; Utang PPN JLN 11,000,000 | 111,000,000 |
 
