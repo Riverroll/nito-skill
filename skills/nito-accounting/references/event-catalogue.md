@@ -26,8 +26,8 @@ the accounts. A role left out is skipped, so `sale_invoice` without
 | `credit_loss_provision` | Month or year end: expected credit loss on receivables | `credit_loss_expense` | `credit_loss_allowance` | A5, E15 |
 | `receivable_write_off` | A specific debt judged uncollectable | `credit_loss_allowance` | `receivable` | A6 |
 | `goods_receipt` | Goods received against a purchase order (GR/IR) | `inventory` | `stock_received_not_billed` | P1 |
-| `vendor_invoice` | Supplier invoice matched to a goods receipt | `stock_received_not_billed`, `tax_input_ppn` | `payable` | P1 |
-| `vendor_service_invoice` | Supplier invoice for a service or expense; non-creditable PPN goes into the expense | `service_expense`, `tax_input_ppn` | `payable` | P2, P3, P4 |
+| `vendor_invoice` | Supplier invoice matched to a goods receipt; deduct a down payment already made | `stock_received_not_billed`, `tax_input_ppn` | `payable`, `vendor_advance` | P1, P7 |
+| `vendor_service_invoice` | Supplier invoice for a service or expense; non-creditable PPN goes into the expense; deduct a down payment already made | `service_expense`, `tax_input_ppn` | `payable`, `vendor_advance` | P2, P3, P4, P7 |
 | `import_purchase` | Import cleared: goods, PPN impor, PPh 22 prepaid, duty paid | `inventory`, `tax_input_ppn`, `prepaid_tax_22_23_25` | `payable`, `bank` | P5 |
 | `purchase_return` | Goods returned to the supplier, debit note | `payable` | `inventory`, `tax_input_ppn` | P6 |
 | `vendor_advance` | Down payment to a supplier | `vendor_advance`, `tax_input_ppn` | `bank` | P7 |
@@ -45,6 +45,10 @@ the accounts. A role left out is skipped, so `sale_invoice` without
 | `cash_transfer` | Money moved between two cash or bank accounts | `bank_in` | `bank_out` | C2 |
 | `cash_receipt_other` | Bank line with no document: interest, refund (user picks the counterpart) | `bank` | `counterpart` | C1 |
 | `cash_payment_other` | Bank line with no document: charges, petty cash spend (user picks the counterpart) | `counterpart` | `bank` | C1, C2 |
+| `employee_advance` | Cash advance (kasbon, CA) paid to an employee | `employee_advance` | `bank` | C3 |
+| `advance_settlement` | The employee accounts for the advance: expenses, unspent cash back, overspend owed to them | `expense`, `tax_input_ppn`, `bank` | `employee_advance`, `reimbursement_payable` | C3 |
+| `expense_claim` | Reimbursement claim approved: the employee paid with their own money | `expense`, `tax_input_ppn` | `reimbursement_payable` | C6 |
+| `reimbursement_payment` | The company pays the employee what it owes (a claim or an overspent advance) | `reimbursement_payable` | `bank` | C3, C6 |
 | `fx_revaluation_gain` | Month end: foreign-currency balance restated upward (period-close.mjs) | `revalued_account` | `fx_unrealised_gain_loss` | C5 |
 | `fx_revaluation_loss` | Month end: foreign-currency balance restated downward | `fx_unrealised_gain_loss` | `revalued_account` | C5 |
 | `stock_shortage` | Stock count finds less than the books | `inventory_adjustment` | `inventory` | I4, E16 |
@@ -106,6 +110,7 @@ is what the engine needs, the name is the usual Indonesian one.
 | `prepaid_tax_22_23_25` | asset | Pajak Dibayar di Muka (PPh 22, 23, 25) | 1-1800 |
 | `prepaid_expense` | asset | Biaya Dibayar di Muka | |
 | `vendor_advance` | asset | Uang Muka Pembelian | |
+| `employee_advance` | asset, control employee | Uang Muka Karyawan | |
 | `contract_asset` | asset | Aset Kontrak / Pendapatan Belum Ditagih | |
 | `deferred_tax_asset` | asset | Aset Pajak Tangguhan | |
 | `fixed_asset` | asset, control asset_register, cash_flow investing | Aset Tetap (one per class) | 1-2100 |
@@ -119,6 +124,7 @@ is what the engine needs, the name is the usual Indonesian one.
 | `ppn_payable` | liability | Utang PPN | |
 | `wht_payable_21` | liability | Utang PPh 21 | 2-1500 |
 | `wht_payable_23`, `wht_payable_final`, `income_tax_payable` | liability | Utang PPh 23, Utang PPh Final (4(2), 15), Utang PPh 29 | 2-1510 |
+| `reimbursement_payable` | liability, control employee | Utang Reimbursement Karyawan | |
 | `bpjs_employment_payable`, `bpjs_health_payable` | liability | Utang BPJS Ketenagakerjaan, Utang BPJS Kesehatan | |
 | `thr_accrual` | liability | Akrual THR | |
 | `dividend_payable` | liability | Utang Dividen | |

@@ -171,7 +171,7 @@ its company needs and adds its own events from the domain file.
 | ERP module | Documents | Events |
 |---|---|---|
 | CRM, billing, subscriptions | Invoice, credit note, receipt, deposit | `sale_invoice`, `service_invoice`, `sale_return`, `receipt_in`, `customer_advance`, `advance_earned`, `credit_loss_provision`, `receivable_write_off` |
-| Purchasing, expenses | PO (none), goods receipt, supplier invoice, payment, advance | `goods_receipt`, `vendor_invoice`, `vendor_service_invoice`, `payment_out`, `vendor_advance`, `purchase_return`, `import_purchase`, `accrual` |
+| Purchasing, expenses | PO (none), goods receipt, supplier invoice, payment, advance, cash advance, reimbursement claim | `goods_receipt`, `vendor_invoice`, `vendor_service_invoice`, `payment_out`, `vendor_advance`, `purchase_return`, `import_purchase`, `accrual`, `employee_advance`, `advance_settlement`, `expense_claim`, `reimbursement_payment` |
 | Inventory, warehouse | Receipt, delivery, transfer, count, consumption, valuation | `goods_receipt`, `sale_cogs`, `stock_transfer_out`, `stock_transfer_in`, `stock_shortage`, `stock_issue`, `inventory_writedown`, `landed_cost` |
 | Manufacturing | Work order, material issue, completion | `wip_material`, `wip_labour`, `overhead_applied`, `overhead_incurred`, `production_complete`, `overhead_close`, `standard_cost_receipt` |
 | Treasury, cash | Bank statement, transfer, petty cash | `cash_transfer`, `cash_receipt_other`, `cash_payment_other`, `fx_revaluation_*` |

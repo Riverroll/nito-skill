@@ -270,7 +270,7 @@ without new research.
 
 | Copy | Gives you |
 |---|---|
-| `assets/posting-core.mjs` | The rules and 61 posting events, each replayed from a worked entry |
+| `assets/posting-core.mjs` | The rules and 65 posting events, each replayed from a worked entry |
 | `assets/posting-service.mjs` | The service an ERP calls: post, reverse, an outbox worker; in-memory and MySQL repositories |
 | `assets/reports.mjs` | Income statement, balance sheet, indirect cash flow, open items, aging, dashboard figures, margin per voyage or project |
 | `assets/period-close.mjs` | Year-end closing, opening balances, FX revaluation |
@@ -419,7 +419,7 @@ test/                            the suites below
 ## Testing
 
 ```sh
-node test/accounting.mjs         # 560: every worked entry balances, every event replays, statements tie out, the service posts once
+node test/accounting.mjs         # 577: every worked entry balances, every event replays, statements tie out, the service posts once
 node test/ledger.mjs             # 61: the showcase ledger in a real browser: data ties out, rules refused, ERP audit clean
 node test/site.mjs               # 29: the landing page: links, live journal, reduced motion, audit, and the counts it quotes
 node test/structure.mjs          # 88: the skills load, references resolve, scenes and tools hold their contract

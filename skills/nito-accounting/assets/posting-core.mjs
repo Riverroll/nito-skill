@@ -55,8 +55,9 @@ export const EVENTS = {
 
   // ---- purchasing and payables
   goods_receipt:          { ref: "P1", debit: ["inventory"], credit: ["stock_received_not_billed"] },
-  vendor_invoice:         { ref: "P1", debit: ["stock_received_not_billed", "tax_input_ppn"], credit: ["payable"] },
-  vendor_service_invoice: { ref: "P2, P3, P4", debit: ["service_expense", "tax_input_ppn"], credit: ["payable"] },
+  // a down payment already made (vendor_advance) is deducted on the invoice
+  vendor_invoice:         { ref: "P1, P7", debit: ["stock_received_not_billed", "tax_input_ppn"], credit: ["payable", "vendor_advance"] },
+  vendor_service_invoice: { ref: "P2, P3, P4, P7", debit: ["service_expense", "tax_input_ppn"], credit: ["payable", "vendor_advance"] },
   import_purchase:        { ref: "P5", debit: ["inventory", "tax_input_ppn", "prepaid_tax_22_23_25"], credit: ["payable", "bank"] },
   purchase_return:        { ref: "P6", debit: ["payable"], credit: ["inventory", "tax_input_ppn"] },
   vendor_advance:         { ref: "P7", debit: ["vendor_advance", "tax_input_ppn"], credit: ["bank"] },
@@ -83,6 +84,12 @@ export const EVENTS = {
   // know to do because the entry carries a source.
   cash_receipt_other:     { ref: "C1", debit: ["bank"], credit: ["counterpart"] },
   cash_payment_other:     { ref: "C1, C2", debit: ["counterpart"], credit: ["bank"] },
+  // employee cash advance (kasbon) and its settlement: unspent cash comes back
+  // through `bank`, an overspend is owed to the employee as `reimbursement_payable`
+  employee_advance:       { ref: "C3", debit: ["employee_advance"], credit: ["bank"] },
+  advance_settlement:     { ref: "C3", debit: ["expense", "tax_input_ppn", "bank"], credit: ["employee_advance", "reimbursement_payable"] },
+  expense_claim:          { ref: "C6", debit: ["expense", "tax_input_ppn"], credit: ["reimbursement_payable"] },
+  reimbursement_payment:  { ref: "C3, C6", debit: ["reimbursement_payable"], credit: ["bank"] },
   fx_revaluation_gain:    { ref: "C5", debit: ["revalued_account"], credit: ["fx_unrealised_gain_loss"] },
   fx_revaluation_loss:    { ref: "C5", debit: ["fx_unrealised_gain_loss"], credit: ["revalued_account"] },
 

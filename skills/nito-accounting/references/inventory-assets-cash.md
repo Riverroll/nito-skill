@@ -38,7 +38,7 @@ For fixed assets, book depreciation follows PSAK 216 (the entity sets life, meth
 | F4 | Right-of-use depreciation over 3 years | Beban Penyusutan 82,895,066 | Akumulasi Penyusutan Aset Hak-Guna 82,895,066 | 82,895,066 |
 | F5 | Impairment, carrying 80,000,000 vs recoverable 70,000,000 (IAS 36 text not opened) | Kerugian Penurunan Nilai 10,000,000 | Akumulasi Penurunan Nilai 10,000,000 | 10,000,000 |
 
-Indonesian tax treatment of leases (PPh 23 on rent, finance-lease rules, deductibility of right-of-use depreciation) was not verified. A cash and bank subledger rests on an imprest petty-cash fund and monthly bank reconciliations whose reconciling items must sum so that adjusted bank equals adjusted book ([OpenStax 8.4](https://github.com/openstax/osbooks-principles-accounting-bundle/blob/main/modules/m67877/index.cnxml) and [8.6](https://github.com/openstax/osbooks-principles-accounting-bundle/blob/main/modules/m67879/index.cnxml), TEXTBOOK). Final tax on bank interest exists under Pasal 4(2) but its rate was not verified, and giro bilyet and cheque practice and kasbon tax treatment were not researched.
+Indonesian tax treatment of leases (PPh 23 on rent, finance-lease rules, deductibility of right-of-use depreciation) was not verified. A cash and bank subledger rests on an imprest petty-cash fund and monthly bank reconciliations whose reconciling items must sum so that adjusted bank equals adjusted book ([OpenStax 8.4](https://github.com/openstax/osbooks-principles-accounting-bundle/blob/main/modules/m67877/index.cnxml) and [8.6](https://github.com/openstax/osbooks-principles-accounting-bundle/blob/main/modules/m67879/index.cnxml), TEXTBOOK). Final tax on bank interest exists under Pasal 4(2) but its rate was not verified, and giro bilyet and cheque practice and kasbon tax treatment were not researched. The C3 shortfall and C6 reimbursement rows are constructed on the same pattern (an overspend or a claim is a liability to the employee until paid, a design inference); whether PPN on an employee's receipt is creditable was not researched, so leave `tax_input_ppn` out unless the Faktur Pajak is in the company's name.
 
 | Ref | CONSTRUCTED cash entry | Debit | Credit | Total (Rp) |
 |---|---|---|---|---|
@@ -49,6 +49,10 @@ Indonesian tax treatment of leases (PPh 23 on rent, finance-lease rules, deducti
 | C2 | Replenishment: 1,500,000 + 2,000,000 + 700,000 | Beban Transportasi 1,500,000; Beban Perlengkapan 2,000,000; Beban Konsumsi 700,000 | Bank 4,200,000 | 4,200,000 |
 | C3 | Employee advance (kasbon) | Uang Muka Karyawan 10,000,000 | Kas/Bank 10,000,000 | 10,000,000 |
 | C3 | Settlement: expense 8,500,000, refund 1,500,000 | Beban Perjalanan Dinas 8,500,000; Kas 1,500,000 | Uang Muka Karyawan 10,000,000 | 10,000,000 |
+| C3 | Settlement short: expense 11,000,000 on the 10,000,000 advance | Beban Perjalanan Dinas 11,000,000 | Uang Muka Karyawan 10,000,000; Utang Reimbursement Karyawan 1,000,000 | 11,000,000 |
+| C3 | Shortfall paid to the employee | Utang Reimbursement Karyawan 1,000,000 | Bank 1,000,000 | 1,000,000 |
 | C4 | Gateway sale, DPP 1,000,000, PPN 110,000 | Piutang Gateway 1,110,000 | Penjualan 1,000,000; PPN Keluaran 110,000 | 1,110,000 |
 | C4 | Settlement net of 2% fee (PPN on fee not modelled) | Bank 1,087,800; Beban Biaya Gateway 22,200 | Piutang Gateway 1,110,000 | 1,110,000 |
 | C5 | USD 10,000 bank balance, 15,500 to 15,800 (invented) | Bank USD 3,000,000 | Keuntungan Selisih Kurs 3,000,000 | 3,000,000 |
+| C6 | Reimbursement claim approved, paid by the employee from their own money | Beban Transportasi 750,000 | Utang Reimbursement Karyawan 750,000 | 750,000 |
+| C6 | Claim paid | Utang Reimbursement Karyawan 750,000 | Bank 750,000 | 750,000 |
