@@ -376,9 +376,63 @@ const inv = await import(join(skill, "assets", "inventory-valuation.mjs"));
     k.revenue_ytd === "82000000.00" && k.net_profit_ytd === "11000000.00" && k.gross_margin_pct === "39.02", JSON.stringify(k));
 }
 
+// ---- the posting service, through the in-memory repository ----
+{
+  const svcMod = await import(join(skill, "assets", "posting-service.mjs"));
+  const accts = Object.fromEntries([...coa.accounts.map((a) => [a.code, a.control ?? null]), ["2-1150", null], ["2-1410", null], ["1-1750", null], ["6-2000", null]]
+    .map(([c, control]) => [c, { active: true, postable: true, control }]));
+  const repo = svcMod.createMemoryRepository({ accounts: accts, defaults, periods: { "2026-01": "open", "2026-02": "closed", "2026-03": "open" } });
+  const svc = svcMod.createPostingService({ repo });
+  const req = (key, date = "2026-01-15", extra = {}) => ({ event_type: "sale_invoice", idempotency_key: key, source_type: "crm_invoice", source_id: key,
+    posting_date: date, document_date: date, created_by: 7, party: "CUST-9", dimensions: { analytic_ref: "VOY-014" },
+    amounts: { receivable: "105450000.00", sales: "95000000.00", tax_output_ppn: "10450000.00" }, ...extra });
+  const o = { company_id: 1, journal_code: "PJ" };
+  const r1 = await svc.post(req("INV-1"), o);
+  ok("service: a CRM invoice posts as PJ/2026/0001", r1.ok && r1.entry_number === "PJ/2026/0001", JSON.stringify(r1));
+  const stored = repo.db.entries[0];
+  ok("service: the customer is on the receivable line and the voyage on every line",
+    stored.lines.find((l) => l.account === "1-1300").party === "CUST-9" && stored.lines.every((l) => l.analytic_ref === "VOY-014"));
+  const r2 = await svc.post(req("INV-1"), o);
+  ok("service: the same request again returns the first entry", r2.ok && r2.replay && r2.entry_id === r1.entry_id && repo.db.entries.length === 1);
+  const [c1, c2] = await Promise.all([svc.post(req("INV-2"), o), svc.post(req("INV-2"), o)]);
+  ok("service: two requests racing with one key post once", c1.ok && c2.ok && c1.entry_id === c2.entry_id && repo.db.entries.length === 2);
+  const closed = await svc.post(req("INV-3", "2026-02-10"), o);
+  ok("service: a closed period is refused", !closed.ok && /period is closed/.test(closed.errors.join()));
+  const r3 = await svc.post(req("INV-4"), o);
+  ok("service: the refusal consumed no number: next is PJ/2026/0003", r3.entry_number === "PJ/2026/0003", r3.entry_number);
+  const norole = await svc.post({ ...req("INV-5"), event_type: "demurrage_claim", amounts: { contract_asset: "1.00", demurrage_revenue: "1.00" } },
+    { ...o, roles: { demurrage_revenue: undefined } });
+  ok("service: a role with no account is refused", !norole.ok && /no account configured/.test(norole.errors.join()), JSON.stringify(norole));
+  const chosen = await svc.post({ ...req("RCV-1"), event_type: "receipt_in", amounts: { bank: "105450000.00", receivable: "105450000.00" } },
+    { company_id: 1, journal_code: "BCA", roles: { bank: "1-1100" } });
+  ok("service: a chosen payment journal posts to its own account and numbers in its own journal",
+    chosen.entry_number === "BCA/2026/0001" && repo.db.entries.at(-1).lines.some((l) => l.account === "1-1100" && l.debit === "105450000.00"));
+  const rv = await svc.reverse({ company_id: 1, entry_id: r1.entry_id, posting_date: "2026-03-01", created_by: 8 });
+  ok("service: a reversal is a new entry and the original is marked reversed",
+    rv.ok && rv.entry_number === "PJ/2026/0004" && repo.db.entries.find((e) => e.entry_id === r1.entry_id).status === "reversed");
+  const rv2 = await svc.reverse({ company_id: 1, entry_id: r1.entry_id, posting_date: "2026-03-01", created_by: 8 });
+  ok("service: an entry already reversed is not reversed twice", !rv2.ok);
+  ok("service: everything stored still balances", core.trialBalance(repo.db.entries).balanced);
+
+  // the outbox: the module queues inside its own transaction, the worker posts
+  ok("outbox: a request with no idempotency key is refused", (() => { try { svcMod.outboxRow(1, { event_type: "x" }); return false; } catch { return true; } })());
+  await repo.enqueue(svcMod.outboxRow(1, req("INV-10")));
+  await repo.enqueue(svcMod.outboxRow(1, req("INV-11", "2026-02-20")));
+  ok("outbox: queuing the same request twice keeps one row", (await repo.enqueue(svcMod.outboxRow(1, req("INV-10")))) === false && repo.db.requests.length === 2);
+  const first = await svc.drainOutbox({ company_id: 1, journalFor: () => "PJ" });
+  ok("outbox: the worker posts what it can and records why the rest failed",
+    first.filter((x) => x.ok).length === 1 && repo.db.requests[1].status === "failed" && /period is closed/.test(repo.db.requests[1].last_error));
+  repo.db.periods["2026-02"] = "open";
+  const second = await svc.drainOutbox({ company_id: 1, journalFor: () => "PJ" });
+  ok("outbox: after the period is opened the retry posts, and nothing posted twice",
+    second.length === 1 && second[0].ok && repo.db.requests.every((r) => r.status === "posted") && repo.db.entries.filter((e) => e.idempotency_key === "INV-10").length === 1);
+}
+
 // the schema carries what the guide says it does
 const prisma = readFileSync(join(skill, "assets", "ledger-schema.prisma"), "utf8");
-for (const t of ["T_M_ACC_ACCOUNT", "T_M_ACC_DEFAULT_ACCOUNT", "T_M_ACC_PERIOD", "T_M_ACC_SEQUENCE", "T_L_ACC_JOURNAL_ENTRY", "T_L_ACC_JOURNAL_LINE"])
+for (const t of ["T_M_ACC_ACCOUNT", "T_M_ACC_DEFAULT_ACCOUNT", "T_M_ACC_PERIOD", "T_M_ACC_SEQUENCE", "T_L_ACC_JOURNAL_ENTRY", "T_L_ACC_JOURNAL_LINE",
+                 "T_M_ACC_CASHBANK", "T_M_ACC_TAX_CODE", "T_L_ACC_ALLOCATION", "T_L_ACC_BANK_STATEMENT", "T_L_ACC_BANK_RECON",
+                 "T_L_ACC_POSTING_REQUEST", "T_M_ACC_FIXED_ASSET"])
   ok(`schema: model ${t} exists`, new RegExp(`^model ${t} \\{`, "m").test(prisma));
 ok("schema: money columns are DECIMAL(18, 2), never Float", /debit\s+Decimal .*@db\.Decimal\(18, 2\)/.test(prisma) && !/\bFloat\b/.test(prisma));
 ok("schema: idempotency key is unique per company", /@@unique\(\[company_id, idempotency_key\]/.test(prisma));
