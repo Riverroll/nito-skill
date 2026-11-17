@@ -94,7 +94,9 @@ every one of them.
 3. Build the ledger and the posting service first: balanced header-and-line
    entries, draft and posted states, reversal, period locks, numbering.
    Start from `references/starter-implementation.md`: copy the schema and
-   the posting core instead of designing them again.
+   the posting core instead of designing them again. `example/ledger/` in
+   the nito-skill repo is a working ERP built on them, to read before
+   writing the service.
 4. For each module the ERP has, implement its events from the catalogue in
    `references/posting-contract.md` and map its documents to a source type.
 5. Fill the account-determination keys. A missing key rejects the posting; do

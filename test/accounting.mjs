@@ -90,8 +90,11 @@ ok("worked entries were found to check", entries >= 40, String(entries));
 const core = await import(join(skill, "assets", "posting-core.mjs"));
 const defaults = { receivable: "1-1300", sales: "4-1000", tax_output_ppn: "2-1400", cogs: "5-0000",
                    inventory: "1-1500", stock_received_not_billed: "2-1150", tax_input_ppn: "1-1700",
-                   payable: "2-1100", bank: "1-1200" };
-const accounts = Object.fromEntries([...coa.accounts.map((a) => a.code), "2-1150"].map((c) =>
+                   payable: "2-1100", bank: "1-1200", service_revenue: "4-2000",
+                   prepaid_tax_22_23_25: "1-1800", service_expense: "6-0000", wht_payable_23: "2-1510",
+                   ppn_payable: "2-1410", ppn_receivable: "1-1750", fixed_asset: "1-2100",
+                   accumulated_depreciation: "1-2190", depreciation_expense: "6-2000" };
+const accounts = Object.fromEntries([...coa.accounts.map((a) => a.code), "2-1150", "2-1410", "1-1750", "6-2000"].map((c) =>
   [c, { active: true, postable: true, control: ["1-1300", "2-1100", "1-1500"].includes(c) }]));
 const ctx = { accounts, isPeriodOpen: (d) => d >= "2026-01-01" && d <= "2026-12-31" };
 const head = (n) => ({ idempotency_key: "k" + n, source_type: "doc", source_id: String(n),
@@ -120,6 +123,29 @@ const tb = core.trialBalance(posted);
 ok("core: trial balance of the replayed entries balances", tb.balanced && tb.total_debit === "423050000.00", tb.total_debit);
 const grir = tb.rows.find((r) => r.account === "2-1150");
 ok("core: GR/IR clears to zero after receipt and invoice", grir && grir.debit === "0.00" && grir.credit === "0.00");
+// the other events, each replaying a worked entry from the references
+const more = [
+  ["A2 service invoice", "service_invoice", { receivable: "55500000.00", service_revenue: "50000000.00", tax_output_ppn: "5500000.00" }, "55500000.00"],
+  ["A2 receipt net of PPh 23", "receipt_in", { bank: "54500000.00", prepaid_tax_22_23_25: "1000000.00", receivable: "55500000.00" }, "55500000.00"],
+  ["P2 service invoice", "vendor_service_invoice", { service_expense: "40000000.00", tax_input_ppn: "4400000.00", payable: "44400000.00" }, "44400000.00"],
+  ["P2 payment net of PPh 23", "payment_out", { payable: "44400000.00", bank: "43600000.00", wht_payable_23: "800000.00" }, "44400000.00"],
+  ["P2 remittance", "tax_payment", { wht_payable_23: "800000.00", bank: "800000.00" }, "800000.00"],
+  ["V2 PPN settlement", "ppn_settlement", { tax_output_ppn: "125000000.00", tax_input_ppn: "98000000.00", ppn_payable: "27000000.00" }, "125000000.00"],
+  ["V2 PPN payment", "tax_payment", { ppn_payable: "27000000.00", bank: "27000000.00" }, "27000000.00"],
+  ["V3 PPN carry forward", "ppn_settlement", { tax_output_ppn: "60000000.00", ppn_receivable: "25000000.00", tax_input_ppn: "85000000.00" }, "85000000.00"],
+  ["F1 asset acquisition", "asset_acquisition", { fixed_asset: "128000000.00", tax_input_ppn: "14080000.00", payable: "142080000.00" }, "142080000.00"],
+  ["F2 depreciation", "depreciation", { depreciation_expense: "24000000.00", accumulated_depreciation: "24000000.00" }, "24000000.00"],
+];
+more.forEach(([ref, ev, amt, total], i) => {
+  const r = post(ev, amt, 40 + i);
+  ok(`core: ${ref} replays through ${ev}`, r.ok && r.total === total, JSON.stringify(r.errors ?? r.total));
+});
+ok("core: every event names only roles that have a default account here",
+  Object.values(core.EVENTS).every((s) => [...s.debit, ...s.credit].every((r) => defaults[r])));
+// tax amounts: A1 PPN is 12% x 11/12 of DPP 95,000,000; P2 PPh 23 is 2% of 40,000,000
+ok("core: percentOf gives A1's PPN", core.percentOf("95000000.00", 12n * 11n, 100n * 12n) === "10450000.00");
+ok("core: percentOf gives P2's PPh 23", core.percentOf("40000000.00", 2n, 100n) === "800000.00");
+ok("core: percentOf rounds half up", core.percentOf("0.05", 1n, 2n) === "0.03" && core.percentOf("0.04", 1n, 2n) === "0.02");
 // the rules it must refuse
 const bad = (name, r, re) => ok(`core refuses: ${name}`, !r.ok && r.errors.some((e) => re.test(e)), JSON.stringify(r.errors));
 bad("an unbalanced entry", post("sale_invoice", { receivable: "100.00", sales: "90.00" }, 20), /does not balance/);
@@ -145,8 +171,11 @@ ok("core: amounts above 2^53 stay exact", core.fromMinor(core.toMinor("900719925
   const rev = core.reverseEntry(posted[0], { posting_date: "2026-02-01", idempotency_key: "rev1", created_by: 2 });
   const v = core.validateEntry(rev, ctx);
   ok("core: a reversal is a new balanced entry that names the original", v.ok && rev.reverses_entry_number === "JV1" && rev.lines[0].credit === "105450000.00");
-  const tb2 = core.trialBalance([posted[0], { ...rev, status: "posted" }]);
-  ok("core: entry plus its reversal nets every account to zero", tb2.rows.every((r) => r.debit === "0.00" && r.credit === "0.00"));
+  // the original is marked "reversed" after its reversal posts; both must still count
+  const tb2 = core.trialBalance([{ ...posted[0], status: "reversed" }, { ...rev, status: "posted" }]);
+  ok("core: entry plus its reversal nets every account to zero", tb2.rows.length > 0 && tb2.rows.every((r) => r.debit === "0.00" && r.credit === "0.00"));
+  ok("core: a reversed entry stays in the trial balance totals", tb2.total_debit === "210900000.00", tb2.total_debit);
+  ok("core: a draft is left out of the trial balance", core.trialBalance([{ ...rev, status: "draft" }]).rows.length === 0);
   let threw = false; try { core.reverseEntry({ ...posted[0], status: "draft" }, {}); } catch { threw = true; }
   ok("core: a draft cannot be reversed", threw);
 }

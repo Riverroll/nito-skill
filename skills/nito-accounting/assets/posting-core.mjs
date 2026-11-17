@@ -27,16 +27,33 @@ export function fromMinor(minor) {
 }
 
 // Which side each role lands on, per event. A module sends amounts by role and
-// never names an account or a side. Extend this table per module; the shapes
-// here are the worked entries A1 and P1 in references/ar-ap-ppn.md.
+// never names an account or a side. A role left out of the request is skipped,
+// so one event covers "with PPN" and "without PPN", "with withholding" and
+// "without". Each shape is a worked entry in the references (ref in comment);
+// test/accounting.mjs replays every one. Extend this table per module.
 export const EVENTS = {
-  sale_invoice:    { debit: ["receivable"],                 credit: ["sales", "tax_output_ppn"] },
-  sale_cogs:       { debit: ["cogs"],                       credit: ["inventory"] },
-  goods_receipt:   { debit: ["inventory"],                  credit: ["stock_received_not_billed"] },
-  vendor_invoice:  { debit: ["stock_received_not_billed", "tax_input_ppn"], credit: ["payable"] },
-  payment_out:     { debit: ["payable"],                    credit: ["bank"] },
-  receipt_in:      { debit: ["bank"],                       credit: ["receivable"] },
+  sale_invoice:           { debit: ["receivable"], credit: ["sales", "tax_output_ppn"] },                 // A1
+  sale_cogs:              { debit: ["cogs"], credit: ["inventory"] },                                     // A1
+  service_invoice:        { debit: ["receivable"], credit: ["service_revenue", "tax_output_ppn"] },       // A2
+  receipt_in:             { debit: ["bank", "prepaid_tax_22_23_25"], credit: ["receivable"] },            // A2, PPh 23 cut by the customer
+  goods_receipt:          { debit: ["inventory"], credit: ["stock_received_not_billed"] },                // P1
+  vendor_invoice:         { debit: ["stock_received_not_billed", "tax_input_ppn"], credit: ["payable"] }, // P1
+  vendor_service_invoice: { debit: ["service_expense", "tax_input_ppn"], credit: ["payable"] },           // P2
+  payment_out:            { debit: ["payable"], credit: ["bank", "wht_payable_23"] },                     // P1, P2 net of PPh 23
+  ppn_settlement:         { debit: ["tax_output_ppn", "ppn_receivable"], credit: ["tax_input_ppn", "ppn_payable"] }, // V2, V3
+  tax_payment:            { debit: ["ppn_payable", "wht_payable_23"], credit: ["bank"] },                 // V2, P2 remittance
+  asset_acquisition:      { debit: ["fixed_asset", "tax_input_ppn"], credit: ["payable"] },               // F1
+  depreciation:           { debit: ["depreciation_expense"], credit: ["accumulated_depreciation"] },      // F2
 };
+
+// amount x num / den, rounded half up to SCALE places. For PPN on DPP nilai
+// lain: percentOf(dpp, 12n * 11n, 100n * 12n). The rates are parameters
+// (references/values-to-verify.md), never constants in code. The rounding rule
+// for PPN and PPh is not settled in the research: confirm it before relying on it.
+export function percentOf(amount, num, den) {
+  const a = toMinor(amount);
+  return fromMinor((a * num * 2n + den) / (den * 2n));
+}
 
 // request: { event_type, amounts: { role: "decimal string" }, ...header fields }
 // defaults: { role: account_code }  (the company's account-determination keys)
@@ -113,12 +130,13 @@ export function reverseEntry(posted, { posting_date, idempotency_key, created_by
 }
 
 // Trial balance from posted lines: per account, and the two grand totals,
-// which must be equal.
+// which must be equal. A "reversed" entry still counts: it stays in the ledger
+// and its reversing entry is what cancels it. Only drafts are left out.
 export function trialBalance(entries) {
   const acc = new Map();
   let dr = 0n, cr = 0n;
   for (const e of entries) {
-    if (e.status !== "posted") continue;
+    if (e.status !== "posted" && e.status !== "reversed") continue;
     for (const l of e.lines) {
       const a = acc.get(l.account) ?? { debit: 0n, credit: 0n };
       a.debit += toMinor(l.debit); a.credit += toMinor(l.credit);

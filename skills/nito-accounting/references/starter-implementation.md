@@ -15,7 +15,7 @@ then extend them. Do not redesign the ledger per project.
 | File | What it is | How it was checked |
 |---|---|---|
 | `assets/ledger-schema.prisma` | Six tables: accounts, default accounts, periods, numbering counter, entry header, entry lines | `prisma validate` on Prisma 7 reports the schema valid. Not migrated to a database. |
-| `assets/posting-core.mjs` | Pure functions: `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `toMinor`, `fromMinor` | `test/accounting.mjs` replays worked entries A1 and P1 and checks every rejection rule |
+| `assets/posting-core.mjs` | Pure functions: `buildEntry`, `validateEntry`, `reverseEntry`, `trialBalance`, `percentOf`, `toMinor`, `fromMinor`; twelve events | `test/accounting.mjs` replays worked entries A1, A2, P1, P2, V2, V3, F1 and F2 and checks every rejection rule |
 | `assets/coa-template-id.json` | Default chart, 29 accounts | `test/accounting.mjs` checks codes, types and normal balances |
 
 The schema follows the naming already used in the owner's projects (`T_M_`
@@ -126,6 +126,18 @@ and credit swapped and a reference to the original. Post it through the same
 transaction, then set the original's `status` to `reversed` and nothing else.
 To correct an entry: reverse it, then post the right one. Both stay.
 
+Every balance and report reads `posted` **and** `reversed` entries and leaves
+out only drafts. A reversed entry is still in the ledger; its reversing entry
+is what cancels it. Reading only `posted` drops the original and keeps the
+reversal, which turns every reversed amount into its opposite.
+`trialBalance` does this; a SQL report needs `WHERE status <> 'draft'`.
+
+When the entry came from a module document (an invoice, a payment), reverse it
+by cancelling the document: reverse every entry the document posted, mark the
+document cancelled, and refuse while another open document refers to it (a
+receipt against the invoice, depreciation of the asset). Reversing the entry
+alone leaves the subledger open item behind and breaks rule 8.
+
 ## Connecting a module
 
 A module calls the service with an event and amounts by role:
@@ -144,22 +156,58 @@ The module computes the business amounts (price, discount, tax) and never
 names an account. `EVENTS` in `posting-core.mjs` decides the side of each
 role, and the company's default accounts decide the account.
 
-`EVENTS` ships with six events: `sale_invoice`, `sale_cogs`, `goods_receipt`,
-`vendor_invoice`, `payment_out`, `receipt_in`. They are the shapes of worked
-entries A1 and P1. Every other event in the catalogue in
-`posting-contract.md` (returns, advances, withholding, depreciation, payroll,
-PPN settlement and the rest) is added the same way: take the worked entry
-with that reference from the topic file, list its debit roles and credit
-roles, add the role keys to the company's default accounts, and add a test
-that replays the worked entry.
+`EVENTS` ships with twelve events, each the shape of a worked entry:
+
+| Event | Debit roles | Credit roles | Worked entry |
+|---|---|---|---|
+| `sale_invoice` | receivable | sales, tax_output_ppn | A1 |
+| `sale_cogs` | cogs | inventory | A1 |
+| `service_invoice` | receivable | service_revenue, tax_output_ppn | A2 |
+| `receipt_in` | bank, prepaid_tax_22_23_25 | receivable | A2 (PPh 23 cut by the customer) |
+| `goods_receipt` | inventory | stock_received_not_billed | P1 |
+| `vendor_invoice` | stock_received_not_billed, tax_input_ppn | payable | P1 |
+| `vendor_service_invoice` | service_expense, tax_input_ppn | payable | P2 |
+| `payment_out` | payable | bank, wht_payable_23 | P1, P2 (PPh 23 withheld) |
+| `ppn_settlement` | tax_output_ppn, ppn_receivable | tax_input_ppn, ppn_payable | V2, V3 |
+| `tax_payment` | ppn_payable, wht_payable_23 | bank | V2, P2 |
+| `asset_acquisition` | fixed_asset, tax_input_ppn | payable | F1 |
+| `depreciation` | depreciation_expense | accumulated_depreciation | F2 |
+
+A role left out of the request is skipped, so one event covers the sale with
+and without PPN, and the payment with and without withholding. Every other
+event in the catalogue in `posting-contract.md` (returns, advances, payroll,
+imports, FX revaluation and the rest) is added the same way: take the worked
+entry with that reference from the topic file, list its debit roles and
+credit roles, add the role keys to the company's default accounts, and add a
+test that replays the worked entry.
+
+`percentOf(amount, num, den)` computes a tax amount exactly and rounds half
+up: PPN on DPP nilai lain is `percentOf(dpp, 12n * 11n, 100n * 12n)`, PPh 23
+is `percentOf(dpp, 2n, 100n)`. Read the numerator and denominator from the
+effective-dated parameters, never from code. The rounding rule for PPN and
+PPh was not settled by the research; confirm it before relying on it.
+
+## A working consumer
+
+`example/ledger/index.html` in the nito-skill repo is an accounting ERP built
+on this starter, in one file: sales, purchases, receipts, payments, fixed
+assets, depreciation, PPN settlement, tax payments, manual journals with
+maker-checker approval, cancellation by reversal, period locks, the trial
+balance, the general ledger and the two statements. It imports
+`posting-core.mjs` unchanged and keeps its "database" in the browser, so the
+document records, account determination, numbering counter and in-memory
+transaction show the shape of the service a real ERP puts around the core.
+`test/ledger.mjs` drives it in a browser.
 
 ## Not in the starter
 
-- Tax calculation. Rates come from effective-dated parameters
-  (`values-to-verify.md`); the starter only posts amounts it is given.
-- Multi-currency revaluation, inventory valuation layers, depreciation runs,
-  payroll calculation, open-item matching and the financial-statement
-  reports. The rules for each are in the topic files; the tables for them are
-  not designed here.
+- The tax parameter table. `percentOf` does the arithmetic; the rates come
+  from effective-dated parameters (`values-to-verify.md`) that the project
+  loads after checking them.
+- Multi-currency revaluation, inventory valuation layers, payroll
+  calculation and the year-end closing entry. The rules for each are in the
+  topic files; the tables for them are not designed here. The showcase ledger
+  does depreciation runs, open-item matching and the statements in page code,
+  not in the starter.
 - Screens. For ledger and data-entry screens use the `nito-design` skill's
   dense-tool mode.
